@@ -15,8 +15,13 @@ public class KakaoUserResponse {
     @Getter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class KakaoAccount {
-        private String email;
         private Profile profile;
+
+        @JsonProperty("gender")
+        private String gender;
+
+        @JsonProperty("birthyear")
+        private String birthyear;
     }
 
     @Getter
@@ -24,5 +29,8 @@ public class KakaoUserResponse {
     public static class Profile {
         @JsonProperty("nickname")
         private String nickname;
+
+        @JsonProperty("profile_image_url")
+        private String profileImageUrl;
     }
 }
