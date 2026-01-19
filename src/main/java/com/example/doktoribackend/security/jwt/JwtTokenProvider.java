@@ -45,14 +45,14 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public String createRefreshToken(User user) {
+    public String createRefreshToken(User user, String tokenId) {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(refreshExpSeconds);
 
         return Jwts.builder()
+                .setId(tokenId)
                 .setSubject(user.getId().toString())
                 .claim("type", "refresh")
-                .claim("nickname", user.getNickname())
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(exp))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
@@ -120,5 +120,14 @@ public class JwtTokenProvider {
 
     public long getRefreshExpSeconds() {
         return refreshExpSeconds;
+    }
+
+    public String getTokenIdFromRefreshToken(String refreshToken) {
+        Claims claims = validateRefreshToken(refreshToken);
+        String jti = claims.getId();
+        if (jti == null || jti.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+        return jti;
     }
 }

@@ -1,66 +1,46 @@
 package com.example.doktoribackend.auth.controller;
 
-import com.example.doktoribackend.auth.OAuthService;
-import com.example.doktoribackend.auth.component.OAuthServiceFactory;
-import com.example.doktoribackend.auth.dto.OAuthProvider;
+import com.example.doktoribackend.auth.TokenService;
 import com.example.doktoribackend.common.util.CookieUtil;
 import com.example.doktoribackend.common.error.ErrorCode;
 import com.example.doktoribackend.exception.BusinessException;
+import com.example.doktoribackend.security.TokenResponse;
 import com.example.doktoribackend.security.jwt.JwtTokenProvider;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.servlet.view.RedirectView;
+import org.springframework.web.bind.annotation.*;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final OAuthServiceFactory oauthFactory;
     private final JwtTokenProvider jwtTokenProvider;
+    private final TokenService tokenService;
 
-    @GetMapping("/auth/{provider}")
-    public RedirectView redirectToOAuth(
-            @PathVariable String provider,
-            @RequestParam(required = false) String state,
-            HttpServletResponse response) {
-
-        OAuthProvider oauthProvider = OAuthProvider.fromString(provider);
-
-        OAuthService service = oauthFactory.getService(oauthProvider);
-        String resolvedState = (state == null || state.isBlank()) ? java.util.UUID.randomUUID().toString() : state;
-        CookieUtil.addStateCookie(response, resolvedState);
-        return new RedirectView(service.buildAuthorizeUrl(resolvedState));
-    }
-
-    @GetMapping("/auth/{provider}/callback")
-    public RedirectView handleCallback(
-            @PathVariable String provider,
-            @RequestParam String code,
-            @RequestParam(required = false) String state,
+    @Operation(
+            summary = "Access Token 갱신",
+            description = "Refresh Token을 사용하여 새로운 Access Token과 Refresh Token을 발급받습니다. "
+    )
+    @PostMapping("/auth/refresh")
+    public TokenResponse refresh(
             HttpServletRequest request,
             HttpServletResponse response) {
 
-        OAuthProvider oauthProvider = OAuthProvider.fromString(provider);
-        OAuthService service = oauthFactory.getService(oauthProvider);
+        String refreshToken = CookieUtil.resolveRefreshToken(request);
 
-        String savedState = CookieUtil.resolveState(request);
-        if (savedState == null || !savedState.equals(state)) {
-            throw new BusinessException(ErrorCode.INVALID_OAUTH_STATE);
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new BusinessException(ErrorCode.NOT_EXIST_REFRESH_TOKEN);
         }
+
+        TokenResponse refreshed = tokenService.refreshTokens(refreshToken);
 
         CookieUtil.addRefreshTokenCookie(
                 response,
-                service.handleCallback(code),
+                refreshed.getRefreshToken(),
                 jwtTokenProvider.getRefreshExpSeconds()
         );
-        CookieUtil.removeStateCookie(response);
-
-        String redirectUrl = service.buildFrontendRedirect(state);
-        return new RedirectView(redirectUrl);
+        return refreshed;
     }
 }
