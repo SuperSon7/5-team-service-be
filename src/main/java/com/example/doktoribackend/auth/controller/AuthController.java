@@ -4,8 +4,11 @@ import com.example.doktoribackend.auth.OAuthService;
 import com.example.doktoribackend.auth.component.OAuthServiceFactory;
 import com.example.doktoribackend.auth.dto.OAuthProvider;
 import com.example.doktoribackend.common.util.CookieUtil;
+import com.example.doktoribackend.common.error.ErrorCode;
+import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.security.jwt.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,12 +26,15 @@ public class AuthController {
     @GetMapping("/auth/{provider}")
     public RedirectView redirectToOAuth(
             @PathVariable String provider,
-            @RequestParam(required = false) String state) {
+            @RequestParam(required = false) String state,
+            HttpServletResponse response) {
 
         OAuthProvider oauthProvider = OAuthProvider.fromString(provider);
 
         OAuthService service = oauthFactory.getService(oauthProvider);
-        return new RedirectView(service.buildAuthorizeUrl(state));
+        String resolvedState = (state == null || state.isBlank()) ? java.util.UUID.randomUUID().toString() : state;
+        CookieUtil.addStateCookie(response, resolvedState);
+        return new RedirectView(service.buildAuthorizeUrl(resolvedState));
     }
 
     @GetMapping("/auth/{provider}/callback")
@@ -36,16 +42,23 @@ public class AuthController {
             @PathVariable String provider,
             @RequestParam String code,
             @RequestParam(required = false) String state,
+            HttpServletRequest request,
             HttpServletResponse response) {
 
         OAuthProvider oauthProvider = OAuthProvider.fromString(provider);
         OAuthService service = oauthFactory.getService(oauthProvider);
+
+        String savedState = CookieUtil.resolveState(request);
+        if (savedState == null || !savedState.equals(state)) {
+            throw new BusinessException(ErrorCode.INVALID_OAUTH_STATE);
+        }
 
         CookieUtil.addRefreshTokenCookie(
                 response,
                 service.handleCallback(code),
                 jwtTokenProvider.getRefreshExpSeconds()
         );
+        CookieUtil.removeStateCookie(response);
 
         String redirectUrl = service.buildFrontendRedirect(state);
         return new RedirectView(redirectUrl);

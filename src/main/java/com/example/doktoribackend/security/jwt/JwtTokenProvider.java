@@ -35,18 +35,14 @@ public class JwtTokenProvider {
         Instant now = Instant.now();
         Instant exp = now.plus(accessExpMinutes, ChronoUnit.MINUTES);
 
-        String accessToken = Jwts.builder()
+        return Jwts.builder()
                 .setSubject(user.getId().toString())
                 .claim("userId", user.getId())
-                .claim("email", user.getEmail())
                 .claim("nickname", user.getNickname())
-                .claim("role", user.getRole().name())
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(exp))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
-
-        return accessToken;
     }
 
     public String createRefreshToken(User user) {
@@ -56,9 +52,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .setSubject(user.getId().toString())
                 .claim("type", "refresh")
-                .claim("email", user.getEmail())
                 .claim("nickname", user.getNickname())
-                .claim("role", user.getRole().name())
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(exp))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
@@ -97,16 +91,6 @@ public class JwtTokenProvider {
     public Long getUserIdFromAccessToken(String accessToken) {
         Claims claims = parseClaims(accessToken);
         return Long.parseLong(claims.getSubject());
-    }
-
-    public String getEmailFromAccessToken(String accessToken) {
-        Claims claims = parseClaims(accessToken);
-        return claims.get("email", String.class);
-    }
-
-    public String getRoleFromAccessToken(String accessToken) {
-        Claims claims = parseClaims(accessToken);
-        return claims.get("role", String.class);
     }
 
     public String getNicknameFromAccessToken(String accessToken) {
