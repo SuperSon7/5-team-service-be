@@ -1,7 +1,8 @@
-package com.example.doktoribackend.auth;
+package com.example.doktoribackend.auth.controller;
 
 import com.example.doktoribackend.auth.component.OAuthServiceFactory;
 import com.example.doktoribackend.auth.dto.OAuthProvider;
+import com.example.doktoribackend.auth.service.OAuthService;
 import com.example.doktoribackend.common.error.ErrorCode;
 import com.example.doktoribackend.common.util.CookieUtil;
 import com.example.doktoribackend.exception.BusinessException;
@@ -21,7 +22,6 @@ public class OAuthController {
 
     private final OAuthServiceFactory oauthFactory;
     private final JwtTokenProvider jwtTokenProvider;
-    private final TokenService tokenService;
 
     @GetMapping("/{provider}")
     public RedirectView redirectToOAuth(

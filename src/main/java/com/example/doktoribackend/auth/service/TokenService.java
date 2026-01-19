@@ -1,4 +1,4 @@
-package com.example.doktoribackend.auth;
+package com.example.doktoribackend.auth.service;
 
 import com.example.doktoribackend.auth.domain.RefreshToken;
 import com.example.doktoribackend.auth.repository.RefreshTokenRepository;

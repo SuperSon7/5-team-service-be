@@ -37,13 +37,6 @@ public class CustomUserDetails implements UserDetails {
         );
     }
 
-    public static CustomUserDetails fromClaims(Long id, String nickname) {
-        List<GrantedAuthority> authorities =
-                List.of(new SimpleGrantedAuthority("ROLE_USER"));
-
-        return new CustomUserDetails(id, nickname, authorities);
-    }
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return authorities;

@@ -1,6 +1,6 @@
 package com.example.doktoribackend.auth.controller;
 
-import com.example.doktoribackend.auth.TokenService;
+import com.example.doktoribackend.auth.service.TokenService;
 import com.example.doktoribackend.common.util.CookieUtil;
 import com.example.doktoribackend.common.error.ErrorCode;
 import com.example.doktoribackend.exception.BusinessException;
@@ -42,5 +42,18 @@ public class AuthController {
                 jwtTokenProvider.getRefreshExpSeconds()
         );
         return refreshed;
+    }
+
+    @Operation(
+            summary = "로그 아웃",
+            description = "Refresh Token을 비활성화하고 쿠키를 삭제합니다 "
+    )
+    @PostMapping("/auth/logout")
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = CookieUtil.resolveRefreshToken(request);
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            tokenService.logout(refreshToken);
+        }
+        CookieUtil.removeRefreshTokenCookie(response);
     }
 }

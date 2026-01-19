@@ -1,6 +1,6 @@
 package com.example.doktoribackend.auth.component;
 
-import com.example.doktoribackend.auth.OAuthService;
+import com.example.doktoribackend.auth.service.OAuthService;
 import com.example.doktoribackend.auth.dto.OAuthProvider;
 import com.example.doktoribackend.common.error.ErrorCode;
 import com.example.doktoribackend.exception.BusinessException;

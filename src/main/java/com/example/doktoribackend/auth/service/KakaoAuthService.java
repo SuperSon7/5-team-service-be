@@ -1,5 +1,6 @@
-package com.example.doktoribackend.auth;
+package com.example.doktoribackend.auth.service;
 
+import com.example.doktoribackend.auth.KakaoOAuthClient;
 import com.example.doktoribackend.auth.dto.KakaoTokenResponse;
 import com.example.doktoribackend.auth.dto.KakaoUserResponse;
 import com.example.doktoribackend.auth.dto.OAuthProvider;

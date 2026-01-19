@@ -5,6 +5,7 @@ import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.user.domain.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 @Component
+@Getter
 public class JwtTokenProvider {
 
     @Value("${app.jwt.secret}")
@@ -116,10 +118,6 @@ public class JwtTokenProvider {
         }
 
         return claims;
-    }
-
-    public long getRefreshExpSeconds() {
-        return refreshExpSeconds;
     }
 
     public String getTokenIdFromRefreshToken(String refreshToken) {
