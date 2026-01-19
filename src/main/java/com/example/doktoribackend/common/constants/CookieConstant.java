@@ -5,5 +5,5 @@ public class CookieConstant {
     private CookieConstant() {}
 
     public static final String REFRESH_TOKEN = "refresh_token";
-    public static final String REFRESH_COOKIE_PATH = "/api/auth";
+    public static final String REFRESH_COOKIE_PATH = "/";
 }

@@ -2,8 +2,7 @@ package com.example.doktoribackend.auth;
 
 import com.example.doktoribackend.auth.dto.KakaoTokenResponse;
 import com.example.doktoribackend.auth.dto.KakaoUserResponse;
-import com.example.doktoribackend.auth.dto.LoginResult;
-import com.example.doktoribackend.common.util.CookieUtil;
+import com.example.doktoribackend.auth.dto.OAuthProvider;
 import com.example.doktoribackend.security.jwt.JwtTokenProvider;
 import com.example.doktoribackend.user.domain.User;
 import com.example.doktoribackend.user.repository.UserRepository;
@@ -13,25 +12,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import jakarta.servlet.http.HttpServletResponse;
 
 @Service
 @RequiredArgsConstructor
-public class KakaoAuthService {
+public class KakaoAuthService implements OAuthService {
 
     private final KakaoOAuthClient kakaoOAuthClient;
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
 
-    @Value("${kakao.oauth.frontend-redirect:http://localhost:3000/oauth/callback}")
+    @Value("${kakao.oauth.frontend-redirect}")
     private String frontendRedirect;
 
     public String buildAuthorizeUrl(String state) {
         return kakaoOAuthClient.buildAuthorizeUrl(state);
     }
 
+    @Override
     @Transactional
-    public LoginResult handleCallback(String code, HttpServletResponse response) {
+    public String handleCallback(String code) {
         KakaoTokenResponse tokenResponse = kakaoOAuthClient.exchangeToken(code);
         KakaoUserResponse userResponse = kakaoOAuthClient.fetchUser(tokenResponse.getAccessToken());
 
@@ -51,19 +50,21 @@ public class KakaoAuthService {
         user.updateProfile(email, nickname);
         user.linkKakaoId(kakaoId);
 
-        String accessToken = jwtTokenProvider.createAccessToken(user);
-        String refreshToken = jwtTokenProvider.createRefreshToken(user);
-        CookieUtil.addRefreshTokenCookie(response, refreshToken, jwtTokenProvider.getRefreshExpSeconds());
+        return jwtTokenProvider.createRefreshToken(user);
 
-        return new LoginResult(accessToken);
     }
 
-    public String buildFrontendRedirect(String accessToken, String state) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(frontendRedirect)
-                .queryParam("accessToken", accessToken);
+    @Override
+    public String buildFrontendRedirect(String state) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(frontendRedirect);
         if (state != null && !state.isBlank()) {
             builder.queryParam("state", state);
         }
         return builder.build().toUriString();
+    }
+
+    @Override
+    public OAuthProvider getProvider() {
+        return OAuthProvider.KAKAO;
     }
 }

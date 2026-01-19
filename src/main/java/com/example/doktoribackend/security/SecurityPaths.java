@@ -5,13 +5,7 @@ public final class SecurityPaths {
     private SecurityPaths() {}
 
     public static final String[] PUBLIC_AUTH = {
-            "/auth/signup",
-            "/auth/login",
-            "/auth/kakao",
-            "/auth/kakao/callback",
-            "/api/auth/kakao",
-            "/api/auth/kakao/callback",
-            "/auth/refresh",
+            "/auth/**",
             "/prompts",
             "/relationships",
             "/chat-styles",
