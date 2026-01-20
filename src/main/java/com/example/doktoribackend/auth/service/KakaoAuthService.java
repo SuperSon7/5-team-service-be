@@ -4,7 +4,7 @@ import com.example.doktoribackend.auth.KakaoOAuthClient;
 import com.example.doktoribackend.auth.dto.KakaoTokenResponse;
 import com.example.doktoribackend.auth.dto.KakaoUserResponse;
 import com.example.doktoribackend.auth.dto.OAuthProvider;
-import com.example.doktoribackend.security.TokenResponse;
+import com.example.doktoribackend.auth.dto.TokenResponse;
 import com.example.doktoribackend.common.error.ErrorCode;
 import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.user.domain.Gender;
@@ -44,8 +44,8 @@ public class KakaoAuthService implements OAuthService {
     public TokenResponse handleCallback(String code) {
         KakaoTokenResponse tokenResponse = kakaoOAuthClient.exchangeToken(code);
 
-        KakaoUserResponse userResponse = kakaoOAuthClient.fetchUser(tokenResponse.getAccessToken());
-        Long kakaoId = userResponse.getId();
+        KakaoUserResponse userResponse = kakaoOAuthClient.fetchUser(tokenResponse.accessToken());
+        Long kakaoId = userResponse.id();
 
         UserAccount existingAccount = userAccountRepository
                 .findByProviderAndProviderId(OAuthProvider.KAKAO, String.valueOf(kakaoId))
@@ -103,7 +103,7 @@ public class KakaoAuthService implements OAuthService {
                                      String profileImagePath,
                                      Gender gender,
                                      Integer birthYear) {
-        Long kakaoId = userResponse.getId();
+        Long kakaoId = userResponse.id();
 
         User newUser = createUser(nickname, profileImagePath, String.valueOf(kakaoId), gender, birthYear);
 
@@ -144,9 +144,9 @@ public class KakaoAuthService implements OAuthService {
     private String extractNickname(KakaoUserResponse userResponse, Long kakaoId) {
         String rawNickname = null;
 
-        if (userResponse.getKakaoAccount() != null
-                && userResponse.getKakaoAccount().getProfile() != null) {
-            rawNickname = userResponse.getKakaoAccount().getProfile().getNickname();
+        if (userResponse.kakaoAccount() != null
+                && userResponse.kakaoAccount().profile() != null) {
+            rawNickname = userResponse.kakaoAccount().profile().nickname();
         }
 
         if (rawNickname == null || rawNickname.isBlank()) {
@@ -157,30 +157,30 @@ public class KakaoAuthService implements OAuthService {
     }
 
     private String extractProfileImage(KakaoUserResponse userResponse) {
-        if (userResponse.getKakaoAccount() != null
-                && userResponse.getKakaoAccount().getProfile() != null) {
-            return userResponse.getKakaoAccount().getProfile().getProfileImageUrl();
+        if (userResponse.kakaoAccount() != null
+                && userResponse.kakaoAccount().profile() != null) {
+            return userResponse.kakaoAccount().profile().profileImageUrl();
         }
         return null;
     }
 
     private Gender extractGender(KakaoUserResponse userResponse) {
-        if (userResponse.getKakaoAccount() == null
-                || userResponse.getKakaoAccount().getGender() == null) {
+        if (userResponse.kakaoAccount() == null
+                || userResponse.kakaoAccount().gender() == null) {
             return Gender.UNKNOWN;
         }
 
-        String kakaoGender = userResponse.getKakaoAccount().getGender();
+        String kakaoGender = userResponse.kakaoAccount().gender();
         return Gender.fromKakaoValue(kakaoGender);
     }
 
     private Integer extractBirthYear(KakaoUserResponse userResponse) {
-        if (userResponse.getKakaoAccount() == null
-                || userResponse.getKakaoAccount().getBirthyear() == null) {
+        if (userResponse.kakaoAccount() == null
+                || userResponse.kakaoAccount().birthyear() == null) {
             return null;
         }
 
-        String birthYear = userResponse.getKakaoAccount().getBirthyear();
+        String birthYear = userResponse.kakaoAccount().birthyear();
 
         try {
             return Integer.parseInt(birthYear.trim());

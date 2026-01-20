@@ -5,7 +5,7 @@ import com.example.doktoribackend.auth.repository.RefreshTokenRepository;
 import com.example.doktoribackend.common.error.ErrorCode;
 import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.exception.UserNotFoundException;
-import com.example.doktoribackend.security.TokenResponse;
+import com.example.doktoribackend.auth.dto.TokenResponse;
 import com.example.doktoribackend.security.jwt.JwtTokenProvider;
 import com.example.doktoribackend.user.domain.User;
 import com.example.doktoribackend.user.repository.UserRepository;
@@ -105,7 +105,7 @@ public class TokenService {
 
         saveRefreshToken(tokenId, user.getId());
 
-        return TokenResponse.of(accessToken, refreshToken);
+        return new TokenResponse(accessToken, refreshToken);
     }
 
     private void saveRefreshToken(String tokenId, Long userId) {
