@@ -1,6 +1,7 @@
 package com.example.doktoribackend.user.domain;
 
 import com.example.doktoribackend.common.domain.BaseTimeEntity;
+import com.example.doktoribackend.user.domain.preference.UserPreference;
 import jakarta.persistence.*;
 import lombok.*;
 
