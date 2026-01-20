@@ -32,7 +32,7 @@ public class User extends BaseTimeEntity {
     private String memberIntro;
 
     @Column(name = "is_onboarding_completed", nullable = false)
-    private boolean isOnboardingCompleted = false;
+    private boolean onboardingCompleted = false;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
@@ -52,13 +52,13 @@ public class User extends BaseTimeEntity {
     @Builder
     public User(String nickname, String profileImagePath,
                 String leaderIntro, String memberIntro,
-                Boolean isOnboardingCompleted) {
+                Boolean onboardingCompleted) {
         this.nickname = nickname;
         this.profileImagePath = profileImagePath;
         this.leaderIntro = leaderIntro;
         this.memberIntro = memberIntro;
-        this.isOnboardingCompleted = isOnboardingCompleted != null
-                ? isOnboardingCompleted : false;
+        this.onboardingCompleted = onboardingCompleted != null
+                ? onboardingCompleted : false;
     }
 
     public void updateNickname(String nickname) {
@@ -80,7 +80,7 @@ public class User extends BaseTimeEntity {
     }
 
     public void completeOnboarding() {
-        this.isOnboardingCompleted = true;
+        this.onboardingCompleted = true;
     }
 
     public void softDelete() {
