@@ -5,10 +5,13 @@ import com.example.doktoribackend.user.domain.User;
 import com.example.doktoribackend.user.domain.id.UserReadingGenreId;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "user_reading_genres")
+@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserReadingGenre {
 
@@ -24,4 +27,15 @@ public class UserReadingGenre {
     @MapsId("readingGenreId")
     @JoinColumn(name = "reading_genre_id")
     private ReadingGenre readingGenre;
+
+    public static UserReadingGenre create(User user, ReadingGenre readingGenre) {
+        UserReadingGenre userReadingGenre = new UserReadingGenre();
+        userReadingGenre.user = user;
+        userReadingGenre.readingGenre = readingGenre;
+        userReadingGenre.id = new UserReadingGenreId(
+                user.getId(),
+                readingGenre.getId()
+        );
+        return userReadingGenre;
+    }
 }

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "reading_genre", indexes = {
+@Table(name = "reading_genres", indexes = {
         @Index(name = "idx_reading_genre_deleted_priority", columnList = "deleted_at,priority")
 })
 @Getter
