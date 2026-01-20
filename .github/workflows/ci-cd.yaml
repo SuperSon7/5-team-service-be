@@ -1,0 +1,139 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  pull_request:
+    branches:
+      - develop
+      - main
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-source-branch:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate source branch
+        run: |
+          if [ "${{ github.head_ref }}" != "develop" ] && [[ "${{ github.head_ref }}" != hotfix/* ]]; then
+            echo "❌ Error: Only 'develop' or 'hotfix/*' branches can be merged into 'main'"
+            echo "Source branch: ${{ github.head_ref }}"
+            exit 1
+          fi
+          echo "✅ Source branch validation passed: ${{ github.head_ref }}"
+
+  ci:
+    needs: [check-source-branch]
+    if: always() && (needs.check-source-branch.result == 'success' || needs.check-source-branch.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "gradle"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build (includes compile check)
+        run: ./gradlew build -x test --no-daemon
+
+      - name: Upload JAR artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: build/libs/*.jar
+          retention-days: 1
+
+      - name: Notify Discord on failure
+        if: failure()
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d '{
+                 "content": "❌ **Backend CI Failed!**",
+                 "embeds": [{
+                   "title": "Build Details",
+                   "description": "Repo: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nCheck: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                   "color": 15158528
+                 }]
+               }' \
+               ${{ secrets.DISCORD_WEBHOOK_URL }} || true
+
+  deploy:
+    needs: ci
+    if: |
+      always() &&
+      needs.ci.result == 'success' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set environment
+        id: env
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "host=EC2_HOST" >> $GITHUB_OUTPUT
+            echo "env_name=prod" >> $GITHUB_OUTPUT
+          else
+            echo "host=DEV_EC2_HOST" >> $GITHUB_OUTPUT
+            echo "env_name=develop" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: build/libs
+
+      - name: Transfer to Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.env.outputs.host == 'EC2_HOST' && secrets.EC2_HOST || secrets.DEV_EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "build/libs/*.jar"
+          target: "/home/ubuntu/app/artifacts/be"
+          strip_components: 2
+          overwrite: true
+
+      - name: Create config and deploy
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          APPLICATION_YML: ${{ steps.env.outputs.env_name == 'prod' && secrets.PROD_APPLICATION_YML || secrets.DEV_APPLICATION_YML }}
+        with:
+          host: ${{ steps.env.outputs.host == 'EC2_HOST' && secrets.EC2_HOST || secrets.DEV_EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: APPLICATION_YML
+          script: |
+            mkdir -p /home/ubuntu/app/backend
+            echo "$APPLICATION_YML" > /home/ubuntu/app/backend/application.yml
+            chmod 600 /home/ubuntu/app/backend/application.yml
+            bash /home/ubuntu/app/deploy.sh be
+
+      - name: Notify Discord
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            COLOR=3066993
+            MSG="✅ **Backend ${{ steps.env.outputs.env_name }} 배포 성공!**"
+          else
+            COLOR=15158528
+            MSG="❌ **Backend ${{ steps.env.outputs.env_name }} 배포 실패!**"
+          fi
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"$MSG\", \"embeds\": [{\"title\": \"${{ github.repository }}\", \"description\": \"Branch: ${{ github.ref_name }}\", \"color\": $COLOR}]}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }} || true
