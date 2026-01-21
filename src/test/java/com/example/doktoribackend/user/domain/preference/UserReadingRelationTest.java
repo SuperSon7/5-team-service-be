@@ -18,7 +18,7 @@ class UserReadingRelationTest {
     @DisplayName("UserReadingGenre.create: 사용자와 장르를 연결하며 복합키를 설정한다")
     void userReadingGenre_createBuildsCompositeKey() {
         User user = createUserWithId(10L);
-        ReadingGenre readingGenre = createReadingGenreWithId(20L);
+        ReadingGenre readingGenre = createReadingGenreWithId();
 
         UserReadingGenre userReadingGenre = UserReadingGenre.create(user, readingGenre);
 
@@ -31,7 +31,7 @@ class UserReadingRelationTest {
     @DisplayName("UserReadingPurpose.create: 사용자와 독서 목적을 연결하며 복합키를 설정한다")
     void userReadingPurpose_createBuildsCompositeKey() {
         User user = createUserWithId(5L);
-        ReadingPurpose readingPurpose = createReadingPurposeWithId(7L);
+        ReadingPurpose readingPurpose = createReadingPurposeWithId();
 
         UserReadingPurpose userReadingPurpose = UserReadingPurpose.create(user, readingPurpose);
 
@@ -46,15 +46,15 @@ class UserReadingRelationTest {
         return user;
     }
 
-    private ReadingGenre createReadingGenreWithId(Long id) {
+    private ReadingGenre createReadingGenreWithId() {
         ReadingGenre genre = mock(ReadingGenre.class);
-        when(genre.getId()).thenReturn(id);
+        when(genre.getId()).thenReturn(20L);
         return genre;
     }
 
-    private ReadingPurpose createReadingPurposeWithId(Long id) {
+    private ReadingPurpose createReadingPurposeWithId() {
         ReadingPurpose purpose = mock(ReadingPurpose.class);
-        when(purpose.getId()).thenReturn(id);
+        when(purpose.getId()).thenReturn(7L);
         return purpose;
     }
 }

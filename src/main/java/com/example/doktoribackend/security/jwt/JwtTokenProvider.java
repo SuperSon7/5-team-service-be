@@ -93,16 +93,6 @@ public class JwtTokenProvider {
         return Long.parseLong(claims.getSubject());
     }
 
-    public String getNicknameFromAccessToken(String accessToken) {
-        Claims claims = parseClaims(accessToken);
-        return claims.get("nickname", String.class);
-    }
-
-    public Long getUserIdFromRefreshToken(String refreshToken) {
-        Claims claims = validateRefreshToken(refreshToken);
-        return Long.parseLong(claims.getSubject());
-    }
-
     public Claims validateRefreshToken(String refreshToken) {
         Claims claims = parseRefreshClaims(refreshToken);
 
