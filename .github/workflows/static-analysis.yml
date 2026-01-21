@@ -33,6 +33,9 @@ jobs:
 
       - name: Run Qodana
         uses: JetBrains/qodana-action@v2024.3
+        with:
+          results-dir: ${{ runner.temp }}/qodana-results
+          upload-result: true
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
 
@@ -41,14 +44,14 @@ jobs:
         if: always()
         with:
           name: qodana-report
-          path: ${{ github.workspace }}/qodana
+          path: ${{ runner.temp }}/qodana-results
           retention-days: 7
 
       - name: Upload SARIF to GitHub
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: success()
         with:
-          sarif_file: ${{ github.workspace }}/qodana/results/qodana.sarif.json
+          sarif_file: ${{ runner.temp }}/qodana-results/qodana.sarif.json
           category: qodana
 
   # 보안 취약점 분석 (CodeQL)
