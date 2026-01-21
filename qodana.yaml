@@ -26,9 +26,6 @@ exclude:
   - name: Security
   - name: Java/Security
   - name: Vulnerable API usage
-  - path: build/
-  - path: .gradle/
-  - path: src/test/
 
 # 실패 임계값 설정
 failThreshold: 100
