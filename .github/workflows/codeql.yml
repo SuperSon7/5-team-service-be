@@ -1,4 +1,4 @@
-name: CodeQL Backend Scan
+name: CodeQL Backend Scan (JDK 21)
 
 on:
   pull_request:

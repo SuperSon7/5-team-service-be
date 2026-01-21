@@ -1,4 +1,4 @@
-name: Qodana Backend Scan
+name: Qodana Backend Scan (JDK 21)
 
 on:
   pull_request:
