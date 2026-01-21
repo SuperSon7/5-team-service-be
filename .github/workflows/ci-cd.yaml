@@ -108,19 +108,37 @@ jobs:
           strip_components: 2
           overwrite: true
 
-      - name: Create config and deploy
+      - name: Create .env and deploy
         uses: appleboy/ssh-action@v1.0.3
         env:
-          APPLICATION_YML: ${{ steps.env.outputs.env_name == 'prod' && secrets.PROD_APPLICATION_YML || secrets.DEV_APPLICATION_YML }}
+          SPRING_PROFILES_ACTIVE: ${{ steps.env.outputs.env_name }}
+          DB_URL: ${{ steps.env.outputs.env_name == 'prod' && secrets.PROD_DB_URL || secrets.DEV_DB_URL }}
+          DB_USERNAME: ${{ steps.env.outputs.env_name == 'prod' && secrets.PROD_DB_USERNAME || secrets.DEV_DB_USERNAME }}
+          DB_PASSWORD: ${{ steps.env.outputs.env_name == 'prod' && secrets.PROD_DB_PASSWORD || secrets.DEV_DB_PASSWORD }}
+          KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          KAKAO_REDIRECT_URI: ${{ steps.env.outputs.env_name == 'prod' && secrets.PROD_KAKAO_REDIRECT_URI || secrets.DEV_KAKAO_REDIRECT_URI }}
+          KAKAO_FRONTEND_REDIRECT: ${{ steps.env.outputs.env_name == 'prod' && secrets.PROD_KAKAO_FRONTEND_REDIRECT || secrets.DEV_KAKAO_FRONTEND_REDIRECT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         with:
           host: ${{ steps.env.outputs.host == 'EC2_HOST' && secrets.EC2_HOST || secrets.DEV_EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: APPLICATION_YML
+          envs: SPRING_PROFILES_ACTIVE,DB_URL,DB_USERNAME,DB_PASSWORD,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,KAKAO_REDIRECT_URI,KAKAO_FRONTEND_REDIRECT,JWT_SECRET
           script: |
             mkdir -p /home/ubuntu/app/backend
-            echo "$APPLICATION_YML" > /home/ubuntu/app/backend/application.yml
-            chmod 600 /home/ubuntu/app/backend/application.yml
+            cat > /home/ubuntu/app/backend/.env << 'EOF'
+            SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE
+            DB_URL=$DB_URL
+            DB_USERNAME=$DB_USERNAME
+            DB_PASSWORD=$DB_PASSWORD
+            KAKAO_CLIENT_ID=$KAKAO_CLIENT_ID
+            KAKAO_CLIENT_SECRET=$KAKAO_CLIENT_SECRET
+            KAKAO_REDIRECT_URI=$KAKAO_REDIRECT_URI
+            KAKAO_FRONTEND_REDIRECT=$KAKAO_FRONTEND_REDIRECT
+            JWT_SECRET=$JWT_SECRET
+            EOF
+            chmod 600 /home/ubuntu/app/backend/.env
             bash /home/ubuntu/app/deploy.sh be
 
       - name: Notify Discord
