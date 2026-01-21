@@ -50,7 +50,7 @@ public class UserController {
     }
 
     @Operation(summary = "프로필 필수 정보 등록", description = "성별과 출생연도 정보를 등록합니다.")
-    @PatchMapping("/me/profile")
+    @PutMapping("/me/profile")
     public ResponseEntity<ApiResult<UserProfileResponse>> updateProfileRequiredInfo(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody ProfileRequiredInfoRequest request
