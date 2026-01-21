@@ -1,6 +1,8 @@
 package com.example.doktoribackend.user.service;
 
 import com.example.doktoribackend.exception.UserNotFoundException;
+import com.example.doktoribackend.common.error.ErrorCode;
+import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.user.domain.User;
 import com.example.doktoribackend.user.domain.preference.UserPreference;
 import com.example.doktoribackend.user.dto.ProfileRequiredInfoRequest;
@@ -45,6 +47,10 @@ public class UserService {
     public UserProfileResponse updateProfileRequiredInfo(Long userId, ProfileRequiredInfoRequest request) {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(UserNotFoundException::new);
+
+        if (user.isProfileCompleted()) {
+            throw new BusinessException(ErrorCode.PROFILE_ALREADY_COMPLETED);
+        }
 
         UserPreference preference = user.getUserPreference();
         if (preference == null) {
