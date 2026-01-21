@@ -37,6 +37,8 @@ public enum ErrorCode {
 
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "존재하지 않는 사용자입니다."),
+    PROFILE_ALREADY_COMPLETED(HttpStatus.CONFLICT, "PROFILE_ALREADY_COMPLETED", "이미 프로필 필수 정보를 완료했습니다."),
+    ONBOARDING_ALREADY_COMPLETED(HttpStatus.CONFLICT, "ONBOARDING_ALREADY_COMPLETED", "이미 온보딩을 완료했습니다."),
 
     // Policy
     POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_NOT_FOUND", "정책을 찾을 수 없습니다.");
