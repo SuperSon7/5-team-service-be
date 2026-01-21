@@ -3,7 +3,7 @@ version: "1.0"
 # Qodana 설정: 코드 품질 및 Spring 분석에 집중
 # 보안 취약점 분석은 CodeQL에서 담당
 
-linter: jetbrains/qodana-jvm:latest
+linter: jetbrains/qodana-jvm:2024.3
 
 profile:
   name: qodana.recommended
@@ -26,12 +26,9 @@ exclude:
   - name: Security
   - name: Java/Security
   - name: Vulnerable API usage
-
-# 분석 제외 경로
-excludePaths:
-  - build/
-  - .gradle/
-  - src/test/
+  - path: build/
+  - path: .gradle/
+  - path: src/test/
 
 # 실패 임계값 설정
 failThreshold: 100
