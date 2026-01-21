@@ -127,7 +127,7 @@ jobs:
           envs: SPRING_PROFILES_ACTIVE,DB_URL,DB_USERNAME,DB_PASSWORD,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,KAKAO_REDIRECT_URI,KAKAO_FRONTEND_REDIRECT,JWT_SECRET
           script: |
             mkdir -p /home/ubuntu/app/backend
-            cat > /home/ubuntu/app/backend/.env << 'EOF'
+            cat > /home/ubuntu/app/backend/.env << EOF
             SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE
             DB_URL=$DB_URL
             DB_USERNAME=$DB_USERNAME
