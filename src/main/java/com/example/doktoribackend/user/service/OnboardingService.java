@@ -45,6 +45,10 @@ public class OnboardingService {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(UserNotFoundException::new);
 
+        if (user.isOnboardingCompleted()) {
+            throw new BusinessException(ErrorCode.ONBOARDING_ALREADY_COMPLETED);
+        }
+
         UserPreference preference = resolvePreference(user);
 
         if (request.readingVolumeId() != null) {
