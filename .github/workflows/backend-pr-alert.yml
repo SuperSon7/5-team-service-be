@@ -11,8 +11,8 @@ jobs:
       - name: Send Notification to Reviewer
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          DISCORD_ID_ELLA: "1409041686398500954"
-          DISCORD_ID_BRUNI: "1349768815491285056"
+          DISCORD_ID_ELLA: ${{ secrets.DISCORD_ID_ELLA }}
+          DISCORD_ID_BRUNI: ${{ secrets.DISCORD_ID_BRUNI }}
         run: |
           # 1. 리뷰어로 지정된 사람의 GitHub 아이디 가져오기
           REQUESTED_GITHUB_USER="${{ github.event.requested_team.name || github.event.requested_reviewer.login }}"
