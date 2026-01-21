@@ -89,6 +89,10 @@ public class User extends BaseTimeEntity {
         this.onboardingCompleted = true;
     }
 
+    public void completeProfile() {
+        this.profileCompleted = true;
+    }
+
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
