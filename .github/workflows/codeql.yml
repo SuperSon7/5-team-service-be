@@ -36,6 +36,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: java
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Build with Gradle
         run: ./gradlew build -x test
