@@ -111,7 +111,7 @@ jobs:
       - name: Create .env and deploy
         uses: appleboy/ssh-action@v1.0.3
         env:
-          SPRING_PROFILES_ACTIVE: ${{ steps.env.outputs.env_name }}
+          SPRING_PROFILES_ACTIVE: prod
           DB_URL: ${{ steps.env.outputs.env_name == 'prod' && secrets.PROD_DB_URL || secrets.DEV_DB_URL }}
           DB_USERNAME: ${{ steps.env.outputs.env_name == 'prod' && secrets.PROD_DB_USERNAME || secrets.DEV_DB_USERNAME }}
           DB_PASSWORD: ${{ steps.env.outputs.env_name == 'prod' && secrets.PROD_DB_PASSWORD || secrets.DEV_DB_PASSWORD }}
@@ -127,7 +127,7 @@ jobs:
           envs: SPRING_PROFILES_ACTIVE,DB_URL,DB_USERNAME,DB_PASSWORD,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,KAKAO_REDIRECT_URI,KAKAO_FRONTEND_REDIRECT,JWT_SECRET
           script: |
             mkdir -p /home/ubuntu/app/backend
-            cat > /home/ubuntu/app/backend/.env << 'EOF'
+            cat > /home/ubuntu/app/backend/.env << EOF
             SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE
             DB_URL=$DB_URL
             DB_USERNAME=$DB_USERNAME
