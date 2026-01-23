@@ -9,22 +9,24 @@ import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.List;
+
 @Configuration
 class OpenApiConfig {
     @Bean
     OpenAPI openApi() {
         String bearerSchemeName = "bearerAuth";
 
-        Server devServer = new Server();
-        devServer.setUrl("https://dev.doktori.kr/api");
-        devServer.setDescription("Development Server");
-
         return new OpenAPI()
                 .info(new Info()
                         .title("Doktori API")
                         .version("v1")
                         .description("Doktori API 문서"))
-                .addServersItem(devServer)
+                .servers(List.of(
+                        new Server().url("http://localhost:8080/api").description("Local Server"),
+                        new Server().url("https://dev.doktori.kr/api").description("Development Server"),
+                        new Server().url("https://doktori.kr/api").description("Production Server")
+                ))
                 .components(new Components()
                         .addSecuritySchemes(bearerSchemeName,
                                 new SecurityScheme()
