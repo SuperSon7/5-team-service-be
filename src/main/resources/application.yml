@@ -51,3 +51,12 @@ cloud:
       static: ap-northeast-2
     s3:
       bucket-name: doktori-dev-images
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health, info
+  endpoint:
+    prometheus:
+      enabled: true
