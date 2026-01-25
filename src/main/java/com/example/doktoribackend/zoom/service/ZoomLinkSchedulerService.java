@@ -1,7 +1,5 @@
 package com.example.doktoribackend.zoom.service;
 
-import com.example.doktoribackend.common.error.ErrorCode;
-import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.meeting.domain.MeetingRound;
 import com.example.doktoribackend.meeting.domain.MeetingStatus;
 import com.example.doktoribackend.meeting.repository.MeetingRoundRepository;
@@ -11,9 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
