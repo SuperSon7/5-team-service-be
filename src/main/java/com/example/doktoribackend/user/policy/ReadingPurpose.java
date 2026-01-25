@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import software.amazon.awssdk.services.s3.endpoints.internal.Value;
 
 import java.time.LocalDateTime;
 
@@ -24,7 +25,7 @@ public class ReadingPurpose extends BaseTimeEntity {
     private String name;
 
     @Column(name= "priority", nullable = false, columnDefinition = "TINYINT")
-    private Byte priority;
+    private Integer priority;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
