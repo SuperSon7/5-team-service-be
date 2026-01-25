@@ -52,11 +52,27 @@ jobs:
       - name: Prepare JAR artifact (rename with SHA)
         if: github.event_name == 'push'
         run: |
-          set -euo pipe fail
-          JAR="$(ls -t build/libs/*.jar | grep -v plain | head -1)"
-          [ -n "$JAR" ] || { echo "No jar found"; exit 1; }
+          set -euo pipefail
+          
+          echo "📂 Searching for JAR files..."
+          ls -al build/libs/
+          
+          JAR=$(ls -t build/libs/*.jar | grep -v 'plain' | head -n 1 || true)
+          
+          if [ -z "$JAR" ]; then
+            echo "❌ Error: No valid JAR found in build/libs/"
+            exit 1
+          fi
+          
+          echo "✅ Found JAR: $JAR"
+          
           SHORT_SHA="${GITHUB_SHA:0:7}"
-          cp "$JAR" "build/libs/app-${SHORT_SHA}.jar"
+          TARGET="build/libs/app-${SHORT_SHA}.jar"
+          
+          cp "$JAR" "$TARGET"
+          echo "🎉 Renamed to: $TARGET"
+          
+          # 확인용 출력
           ls -al build/libs
 
       - name: Upload JAR artifact
@@ -140,7 +156,7 @@ jobs:
           host: ${{ steps.env.outputs.host == 'EC2_HOST' && secrets.EC2_HOST || secrets.DEV_EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: bash /home/ubuntu/app/deploy.sh fe ${{ steps.env.outputs.env_name }}
+          script: bash /home/ubuntu/app/deploy.sh be ${{ steps.env.outputs.env_name }}
 
       - name: Notify Discord
         if: always()
