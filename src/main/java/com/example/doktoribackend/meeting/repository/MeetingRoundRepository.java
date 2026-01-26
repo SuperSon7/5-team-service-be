@@ -26,9 +26,17 @@ public interface MeetingRoundRepository extends JpaRepository<MeetingRound, Long
             "WHERE mr.id IN :ids")
     List<MeetingRound> findByIdsWithMeeting(@Param("ids") List<Long> ids);
 
+    // origin 메서드 (다른 팀원이 추가)
     @Query("SELECT mr FROM MeetingRound mr " +
             "JOIN FETCH mr.meeting m " +
             "WHERE mr.startAt = :targetTime " +
             "AND m.status IN ('RECRUITING', 'FINISHED')")
     List<MeetingRound> findRoundsStartingAt(@Param("targetTime") LocalDateTime targetTime);
+
+    // 브루니 메서드 (모임 상세 조회용)
+    @Query("SELECT mr FROM MeetingRound mr " +
+           "JOIN FETCH mr.book " +
+           "WHERE mr.meeting.id = :meetingId " +
+           "ORDER BY mr.roundNo ASC")
+    List<MeetingRound> findByMeetingIdWithBook(@Param("meetingId") Long meetingId);
 }

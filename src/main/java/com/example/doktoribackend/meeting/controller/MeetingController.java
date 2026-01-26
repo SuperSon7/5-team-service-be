@@ -5,6 +5,7 @@ import com.example.doktoribackend.common.response.ApiResult;
 import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.meeting.dto.MeetingCreateRequest;
 import com.example.doktoribackend.meeting.dto.MeetingCreateResponse;
+import com.example.doktoribackend.meeting.dto.MeetingDetailResponse;
 import com.example.doktoribackend.meeting.dto.MeetingListRequest;
 import com.example.doktoribackend.meeting.dto.MeetingListResponse;
 import com.example.doktoribackend.meeting.service.MeetingService;
@@ -20,9 +21,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -143,6 +144,96 @@ public class MeetingController {
             @Valid @ModelAttribute MeetingListRequest request
     ) {
         MeetingListResponse response = meetingService.getMeetings(request);
+        return ResponseEntity.ok(ApiResult.ok(response));
+    }
+
+    @Operation(summary = "모임 상세 조회", description = "모임의 상세 정보를 조회합니다. 인증은 선택사항입니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "OK",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiResult.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "code": "OK",
+                                      "message": "요청이 성공적으로 처리되었습니다.",
+                                      "data": {
+                                        "meeting": {
+                                          "meetingId": 123,
+                                          "createdAt": "2026-01-10T19:05:00+09:00",
+                                          "status": "RECRUITING",
+                                          "meetingImagePath": "https://cdn.example.com/meetings/...",
+                                          "title": "함께 읽는 에세이 모임",
+                                          "description": "매주 한 챕터씩 읽고 이야기해요.",
+                                          "readingGenreId": 1,
+                                          "capacity": 8,
+                                          "currentCount": 5,
+                                          "recruitmentDeadline": "2026-01-20",
+                                          "roundCount": 2,
+                                          "time": {
+                                            "startTime": "20:00",
+                                            "endTime": "21:30"
+                                          },
+                                          "leader": {
+                                            "userId": 45,
+                                            "nickname": "startup",
+                                            "profileImagePath": "https://cdn.example.com/profiles/45.png",
+                                            "intro": "안녕하세요, 함께 완독해봐요!"
+                                          }
+                                        },
+                                        "rounds": [
+                                          {
+                                            "roundNo": 1,
+                                            "date": "2026-01-12",
+                                            "book": {
+                                              "title": "아몬드",
+                                              "authors": "손원평",
+                                              "publisher": "출판사",
+                                              "thumbnailUrl": "https://image.kr/book/1.jpg",
+                                              "publishedAt": "2020-01-01"
+                                            }
+                                          }
+                                        ],
+                                        "participantsPreview": {
+                                          "previewCount": 5,
+                                          "profileImages": [
+                                            "https://cdn.example.com/profiles/u1.png",
+                                            "https://cdn.example.com/profiles/u2.png",
+                                            "https://cdn.example.com/profiles/u3.png"
+                                          ],
+                                          "myParticipationStatus": "APPROVED"
+                                        }
+                                      }
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "404", description = "Meeting not found",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "code": "MEETING_NOT_FOUND",
+                                      "message": "존재하지 않는 모임입니다."
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "422", description = "Validation failed",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "code": "VALIDATION_FAILED",
+                                      "message": "요청 값이 유효하지 않습니다."
+                                    }
+                                    """)))
+    })
+    @GetMapping("/{meetingId}")
+    public ResponseEntity<ApiResult<MeetingDetailResponse>> getMeetingDetail(
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        // Validation: meetingId > 0
+        if (meetingId == null || meetingId <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        Long currentUserId = (currentUser != null) ? currentUser.getId() : null;
+        MeetingDetailResponse response = meetingService.getMeetingDetail(meetingId, currentUserId);
         return ResponseEntity.ok(ApiResult.ok(response));
     }
 }
