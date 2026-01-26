@@ -36,7 +36,7 @@ public class Notification {
     @Column(nullable = false, length = 300)
     private String message;
 
-    @Column(name = "link_path", length = 255)
+    @Column(name = "link_path")
     private String linkPath;
 
     @Column(name = "is_read", nullable = false)

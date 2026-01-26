@@ -29,7 +29,7 @@ public class NotificationType extends BaseTimeEntity {
     @Column(name = "message_template", nullable = false, length = 300)
     private String messageTemplate;
 
-    @Column(name = "link_template", length = 255)
+    @Column(name = "link_template")
     private String linkTemplate;
 
     @Column(name = "deleted_at")

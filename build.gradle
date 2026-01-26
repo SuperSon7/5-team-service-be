@@ -83,7 +83,7 @@ dependencies {
     implementation 'org.flywaydb:flyway-mysql'
 
     // Firebase Admin SDK for FCM
-    implementation 'com.google.firebase:firebase-admin:9.2.0'
+    implementation 'com.google.firebase:firebase-admin:9.4.2'
 }
 
 tasks.named('test') {
