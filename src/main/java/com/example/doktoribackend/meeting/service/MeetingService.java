@@ -10,6 +10,7 @@ import com.example.doktoribackend.meeting.domain.MeetingMember;
 import com.example.doktoribackend.meeting.domain.MeetingRound;
 import com.example.doktoribackend.meeting.dto.MeetingCreateRequest;
 import com.example.doktoribackend.meeting.dto.MeetingCreateResponse;
+import com.example.doktoribackend.meeting.dto.MeetingDetailResponse;
 import com.example.doktoribackend.meeting.dto.MeetingListRequest;
 import com.example.doktoribackend.meeting.dto.MeetingListResponse;
 import com.example.doktoribackend.meeting.dto.PageInfo;
@@ -142,6 +143,33 @@ public class MeetingService {
 
         PageInfo pageInfo = new PageInfo(nextCursorId, hasNext, size);
         return new MeetingListResponse(mapped, pageInfo);
+    }
+
+    @Transactional(readOnly = true)
+    public MeetingDetailResponse getMeetingDetail(Long meetingId, Long currentUserId) {
+        // 1. 모임 기본 정보 조회 (모임장 포함)
+        Meeting meeting = meetingRepository.findByIdWithLeader(meetingId)
+                .filter(m -> m.getDeletedAt() == null)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEETING_NOT_FOUND));
+
+        // 2. 회차 정보 조회 (책 정보 포함)
+        List<MeetingRound> rounds = meetingRoundRepository.findByMeetingIdWithBook(meetingId);
+
+        // 3. 참여자 정보 조회 (APPROVED 상태, 가입순)
+        List<MeetingMember> approvedMembers = meetingMemberRepository
+                .findApprovedMembersByMeetingIdOrderByCreatedAt(meetingId);
+
+        // 4. 현재 사용자 참여 상태 조회
+        String myParticipationStatus = null;
+        if (currentUserId != null) {
+            myParticipationStatus = meetingMemberRepository
+                    .findByMeetingIdAndUserId(meetingId, currentUserId)
+                    .map(mm -> mm.getStatus().name())
+                    .orElse(null);
+        }
+
+        // 5. DTO 변환 및 반환
+        return MeetingDetailResponse.from(meeting, rounds, approvedMembers, myParticipationStatus);
     }
 
     private MeetingListItem toListItem(MeetingListRow row) {
