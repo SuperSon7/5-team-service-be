@@ -82,6 +82,7 @@ public class Meeting extends BaseTimeEntity {
 
     @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("roundNo ASC")
+    @Builder.Default
     private List<MeetingRound> meetingRounds = new ArrayList<>();
 
     public static Meeting create(
