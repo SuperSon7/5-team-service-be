@@ -6,6 +6,7 @@ import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.meeting.dto.MeetingCreateRequest;
 import com.example.doktoribackend.meeting.dto.MeetingCreateResponse;
 import com.example.doktoribackend.meeting.dto.MeetingDetailResponse;
+import com.example.doktoribackend.meeting.dto.JoinMeetingResponse;
 import com.example.doktoribackend.meeting.dto.MeetingListRequest;
 import com.example.doktoribackend.meeting.dto.MeetingListResponse;
 import com.example.doktoribackend.meeting.service.MeetingService;
@@ -235,5 +236,79 @@ public class MeetingController {
         Long currentUserId = (currentUser != null) ? currentUser.getId() : null;
         MeetingDetailResponse response = meetingService.getMeetingDetail(meetingId, currentUserId);
         return ResponseEntity.ok(ApiResult.ok(response));
+    }
+
+    @Operation(summary = "모임 가입 요청", description = "로그인 사용자가 모임에 참여 요청을 합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Created",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiResult.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "code": "OK",
+                                      "message": "모임 참여 요청이 성공적으로 접수되었습니다.",
+                                      "data": {
+                                        "joinRequestId": 987,
+                                        "meetingId": 123,
+                                        "status": "PENDING",
+                                        "requestedAt": "2026-01-10T21:00:00+09:00"
+                                      }
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "code": "AUTH_UNAUTHORIZED",
+                                      "message": "인증이 필요합니다."
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "403", description = "Forbidden",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "code": "JOIN_REQUEST_BLOCKED",
+                                      "message": "해당 모임에 참여할 수 없습니다."
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "404", description = "Meeting not found",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "code": "MEETING_NOT_FOUND",
+                                      "message": "존재하지 않는 모임입니다."
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "409", description = "Conflict",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "code": "JOIN_REQUEST_ALREADY_EXISTS",
+                                      "message": "이미 참여 요청이 접수된 모임입니다."
+                                    }
+                                    """)))
+    })
+    @PostMapping("/{meetingId}/participations")
+    public ResponseEntity<ApiResult<JoinMeetingResponse>> joinMeeting(
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        // 인증 확인
+        if (userDetails == null) {
+            throw new BusinessException(ErrorCode.AUTH_UNAUTHORIZED);
+        }
+
+        // Validation: meetingId > 0
+        if (meetingId == null || meetingId <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        JoinMeetingResponse response = meetingService.joinMeeting(userDetails.getId(), meetingId);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(response.getJoinRequestId())
+                .toUri();
+        return ResponseEntity.created(location)
+                .body(ApiResult.ok(response));
     }
 }
