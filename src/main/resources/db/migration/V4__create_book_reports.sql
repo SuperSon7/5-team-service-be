@@ -1,8 +1,8 @@
 -- book_reports
 CREATE TABLE book_reports (
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    user_id BIGINT UNSIGNED NOT NULL,
-    meeting_round_id BIGINT UNSIGNED NOT NULL,
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id BIGINT  NOT NULL,
+    meeting_round_id BIGINT NOT NULL,
     content TEXT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING_REVIEW',
     rejection_reason VARCHAR(200) NULL,

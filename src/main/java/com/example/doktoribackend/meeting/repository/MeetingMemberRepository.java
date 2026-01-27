@@ -1,6 +1,7 @@
 package com.example.doktoribackend.meeting.repository;
 
 import com.example.doktoribackend.meeting.domain.MeetingMember;
+import com.example.doktoribackend.meeting.domain.MeetingMemberStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,4 +14,6 @@ public interface MeetingMemberRepository extends JpaRepository<MeetingMember, Lo
             "WHERE mm.meeting.id = :meetingId " +
             "AND mm.status = 'APPROVED'")
     List<Long> findApprovedMemberUserIds(@Param("meetingId") Long meetingId);
+
+    boolean existsByMeetingIdAndUserIdAndStatus(Long meetingId, Long userId, MeetingMemberStatus status);
 }
