@@ -32,7 +32,7 @@ public class ZoomLinkSchedulerService {
     private static final long MAX_EXECUTION_MINUTES = 8L;
 
     private static final List<MeetingStatus> TARGET_STATUSES = Arrays.asList(
-            MeetingStatus.FINISHED,
+            MeetingStatus.RECRUITED,
             MeetingStatus.RECRUITING
     );
 

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface MeetingRoundRepository extends JpaRepository<MeetingRound, Long> {
 
@@ -29,6 +30,14 @@ public interface MeetingRoundRepository extends JpaRepository<MeetingRound, Long
     @Query("SELECT mr FROM MeetingRound mr " +
             "JOIN FETCH mr.meeting m " +
             "WHERE mr.startAt = :targetTime " +
-            "AND m.status IN ('RECRUITING', 'FINISHED')")
+            "AND m.status IN ('RECRUITING', 'RECRUITED')")
     List<MeetingRound> findRoundsStartingAt(@Param("targetTime") LocalDateTime targetTime);
+
+    @Query("SELECT mr FROM MeetingRound mr " +
+            "WHERE mr.meeting.id = :meetingId " +
+            "AND mr.roundNo = :roundNo")
+    Optional<MeetingRound> findByMeetingIdAndRoundNo(
+            @Param("meetingId") Long meetingId,
+            @Param("roundNo") Integer roundNo
+    );
 }
