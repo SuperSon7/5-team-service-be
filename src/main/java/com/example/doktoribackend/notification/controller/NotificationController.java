@@ -38,7 +38,7 @@ public class NotificationController {
     }
 
     @Operation(summary = "읽지 않은 알림 존재 여부", description = "최근 3일 중 읽지 않은 알림이 있는지 확인합니다.")
-    @GetMapping("/has-unread")
+    @GetMapping("/unread")
     public ResponseEntity<ApiResult<HasUnreadResponse>> hasUnread(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
@@ -47,22 +47,22 @@ public class NotificationController {
     }
 
     @Operation(summary = "알림 읽음 처리", description = "특정 알림을 읽음으로 표시합니다.")
-    @PutMapping("/{notificationId}/read")
+    @PutMapping("/{notificationId}")
     public ResponseEntity<ApiResult<Void>> markAsRead(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long notificationId
     ) {
         notificationService.markAsRead(userDetails.getId(), notificationId);
-        return ResponseEntity.ok(ApiResult.ok());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "모든 알림 읽음 처리", description = "최근 3일간의 모든 알림을 읽음으로 표시합니다.")
-    @PutMapping("/read-all")
+    @PutMapping
     public ResponseEntity<ApiResult<Void>> markAllAsRead(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         notificationService.markAllAsRead(userDetails.getId());
-        return ResponseEntity.ok(ApiResult.ok());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "FCM 푸시 토큰 등록", description = "Firebase Cloud Messaging 푸시 토큰을 등록합니다.")
@@ -76,7 +76,7 @@ public class NotificationController {
                 request.token(),
                 request.platform()
         );
-        return ResponseEntity.ok(ApiResult.ok());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "실시간 알림 구독 (SSE)",
