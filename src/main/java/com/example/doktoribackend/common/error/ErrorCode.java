@@ -65,6 +65,11 @@ public enum ErrorCode {
     RECRUITMENT_CLOSED(HttpStatus.CONFLICT, "RECRUITMENT_CLOSED", "모집이 마감된 모임입니다."),
     CAPACITY_FULL(HttpStatus.CONFLICT, "CAPACITY_FULL", "모집 정원이 가득 찼습니다."),
 
+    // Pagination
+    PAGINATION_INVALID_CURSOR(HttpStatus.BAD_REQUEST, "PAGINATION_INVALID_CURSOR", "cursorId는 1 이상의 정수여야 합니다."),
+    PAGINATION_SIZE_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "PAGINATION_SIZE_OUT_OF_RANGE", "size는 1~10 사이여야 합니다."),
+    INVALID_STATUS_PARAMETER(HttpStatus.BAD_REQUEST, "INVALID_STATUS_PARAMETER", "status는 ACTIVE 또는 INACTIVE여야 합니다."),
+
     // Notification
     NOTIFICATION_TYPE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_TYPE_NOT_FOUND", "알림 유형을 찾을 수 없습니다."),
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "알림을 찾을 수 없습니다."),

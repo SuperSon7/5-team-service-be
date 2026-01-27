@@ -17,6 +17,9 @@ import com.example.doktoribackend.meeting.dto.JoinMeetingResponse;
 import com.example.doktoribackend.meeting.dto.MeetingListRequest;
 import com.example.doktoribackend.meeting.dto.MeetingListResponse;
 import com.example.doktoribackend.meeting.dto.MeetingSearchRequest;
+import com.example.doktoribackend.meeting.dto.MyMeetingListRequest;
+import com.example.doktoribackend.meeting.dto.MyMeetingListResponse;
+import com.example.doktoribackend.meeting.dto.MyMeetingItem;
 import com.example.doktoribackend.meeting.dto.PageInfo;
 import com.example.doktoribackend.meeting.dto.MeetingListItem;
 import com.example.doktoribackend.meeting.dto.MeetingListRow;
@@ -235,6 +238,52 @@ public class MeetingService {
 
         PageInfo pageInfo = new PageInfo(nextCursorId, hasNext, size);
         return new MeetingListResponse(mapped, pageInfo);
+    }
+
+    @Transactional(readOnly = true)
+    public MyMeetingListResponse getMyMeetings(Long userId, MyMeetingListRequest request) {
+        int size = request.getSizeOrDefault();
+        boolean activeOnly = request.isActiveFilter();
+        
+        List<MeetingListRow> results = meetingRepository.findMyMeetings(
+                userId, 
+                request.getCursorId(), 
+                activeOnly,
+                size + 1
+        );
+
+        boolean hasNext = results.size() > size;
+        List<MeetingListRow> sliced = hasNext ? results.subList(0, size) : results;
+        
+        LocalDateTime now = LocalDateTime.now();
+        List<MyMeetingItem> mapped = sliced.stream()
+                .map(row -> toMyMeetingItem(row, now))
+                .toList();
+
+        Long nextCursorId = hasNext ? mapped.get(mapped.size() - 1).getMeetingId() : null;
+        PageInfo pageInfo = new PageInfo(nextCursorId, hasNext, size);
+        
+        return new MyMeetingListResponse(mapped, pageInfo);
+    }
+
+    private MyMeetingItem toMyMeetingItem(MeetingListRow row, LocalDateTime now) {
+        // Meeting 조회 (currentRound 필요)
+        Meeting meeting = meetingRepository.findById(row.getMeetingId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEETING_NOT_FOUND));
+        
+        // 다음 회차 날짜 조회
+        List<LocalDateTime> nextRounds = meetingRoundRepository.findNextRoundDate(row.getMeetingId(), now);
+        LocalDate meetingDate = nextRounds.isEmpty() ? null : nextRounds.get(0).toLocalDate();
+        
+        return MyMeetingItem.builder()
+                .meetingId(row.getMeetingId())
+                .meetingImagePath(imageUrlResolver.toUrl(row.getMeetingImagePath()))
+                .title(row.getTitle())
+                .readingGenreId(row.getReadingGenreId())
+                .leaderNickname(row.getLeaderNickname())
+                .currentRound(meeting.getCurrentRound())
+                .meetingDate(meetingDate)
+                .build();
     }
 
     private MeetingListItem toListItem(MeetingListRow row) {
