@@ -37,6 +37,7 @@ jobs:
           results-dir: ${{ runner.temp }}/qodana-results
           upload-result: true
           cache-default-branch-only: false
+          additional-cache-key: qodana-main
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
 
