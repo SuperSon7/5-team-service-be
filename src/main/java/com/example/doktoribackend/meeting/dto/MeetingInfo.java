@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -14,7 +14,7 @@ public class MeetingInfo {
     private Long meetingId;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, timezone = "UTC")
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     private String status;
     private String meetingImagePath;
