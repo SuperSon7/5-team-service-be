@@ -8,7 +8,7 @@ on:
       - 'src/**'
       - 'build.gradle'
       - '.github/workflows/feature-ci.yml'
-
+# 변경 트리거...
 # 중복 실행 방지
 concurrency:
   group: backend-feature-ci-${{ github.ref }}
@@ -31,19 +31,10 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
-
-      - name: Install dependencies
-        run: ./gradlew --no-daemon dependencies
-
-      # Quality Gate only
-      - name: Run Checkstyle
-        run: ./gradlew checkstyleMain checkstyleTest --no-daemon
-
-      # Build only (no test)
-      - name: Build with Gradle
-        run: ./gradlew build --no-daemon -x test
+      - name: Build & Checkstyle
+        run: |
+          chmod +x ./gradlew
+          ./gradlew checkstyleMain checkstyleTest build -x test --no-daemon --build-cache
 
       # Notification
       - name: Notify Discord on failure
