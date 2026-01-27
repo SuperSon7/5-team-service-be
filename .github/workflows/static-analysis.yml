@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 코드 품질 분석 (Qodana)
+  # 코드 품질 분석 (Qodana) 캐시키 검증
   qodana:
     name: Qodana (Code Quality)
     runs-on: ubuntu-latest
