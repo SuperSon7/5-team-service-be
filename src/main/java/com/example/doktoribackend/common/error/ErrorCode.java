@@ -63,7 +63,14 @@ public enum ErrorCode {
 
     // Notification
     NOTIFICATION_TYPE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_TYPE_NOT_FOUND", "알림 유형을 찾을 수 없습니다."),
-    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "알림을 찾을 수 없습니다.");
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "알림을 찾을 수 없습니다."),
+
+    // MeetingRound
+    ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND_NOT_FOUND", "모임 회차를 찾을 수 없습니다."),
+
+    // BookReport
+    BOOK_REPORT_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "BOOK_REPORT_ALREADY_SUBMITTED", "이미 독후감을 제출했습니다."),
+    BOOK_REPORT_NOT_WRITABLE(HttpStatus.CONFLICT, "BOOK_REPORT_NOT_WRITABLE", "독후감 작성 가능 시간이 아닙니다.");
 
 
     private final HttpStatus status;
