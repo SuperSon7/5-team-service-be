@@ -17,3 +17,6 @@ app:
   cookie:
     secure: false
     same-site: Lax
+ai:
+  validation:
+    base-url: https://dev.doktori.kr
