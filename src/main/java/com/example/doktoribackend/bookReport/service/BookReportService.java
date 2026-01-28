@@ -4,6 +4,7 @@ import com.example.doktoribackend.bookReport.domain.BookReport;
 import com.example.doktoribackend.bookReport.dto.BookReportCreateRequest;
 import com.example.doktoribackend.bookReport.dto.BookReportCreateResponse;
 import com.example.doktoribackend.bookReport.dto.BookReportDetailResponse;
+import com.example.doktoribackend.bookReport.dto.BookReportProjection;
 import com.example.doktoribackend.bookReport.repository.BookReportRepository;
 import com.example.doktoribackend.book.domain.Book;
 import com.example.doktoribackend.common.error.ErrorCode;
@@ -75,21 +76,20 @@ public class BookReportService {
         BookReport bookReport = BookReport.create(user, meetingRound, request.content());
         bookReportRepository.save(bookReport);
 
-        String bookTitle = meetingRound.getBook().getTitle();
-        aiValidationService.validate(bookReport.getId(), bookTitle, request.content());
+        aiValidationService.validate(bookReport.getId(), request.title(), request.content());
 
         return new BookReportCreateResponse(meetingId);
     }
 
     @Transactional(readOnly = true)
     public BookReportDetailResponse getMyBookReport(Long userId, Long roundId) {
-        MeetingRound meetingRound = meetingRoundRepository.findById(roundId)
+        MeetingRound meetingRound = meetingRoundRepository.findByIdWithBookAndMeeting(roundId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROUND_NOT_FOUND));
 
         Book book = meetingRound.getBook();
 
-        Optional<BookReport> bookReportOpt = bookReportRepository
-                .findByUserIdAndMeetingRoundIdAndDeletedAtIsNull(userId, roundId);
+        Optional<BookReportProjection> bookReportOpt = bookReportRepository
+                .findProjectionByUserIdAndMeetingRoundId(userId, roundId);
 
         BookReportDetailResponse.BookInfo bookInfo = new BookReportDetailResponse.BookInfo(
                 book.getTitle(),
@@ -101,12 +101,12 @@ public class BookReportService {
 
         BookReportDetailResponse.BookReportInfo bookReportInfo;
         if (bookReportOpt.isPresent()) {
-            BookReport bookReport = bookReportOpt.get();
+            BookReportProjection projection = bookReportOpt.get();
             bookReportInfo = new BookReportDetailResponse.BookReportInfo(
-                    bookReport.getId(),
-                    bookReport.getStatus().name(),
-                    bookReport.getContent(),
-                    bookReport.getRejectionReason()
+                    projection.getId(),
+                    projection.getStatus().name(),
+                    projection.getContent(),
+                    projection.getRejectionReason()
             );
         } else {
             String status = isWritablePeriod(meetingRound) ? "NOT_SUBMITTED" : "DEADLINE_PASSED";
