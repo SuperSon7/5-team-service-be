@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 코드 품질 분석 (Qodana)
+  # 코드 품질 분석 (Qodana) 프라이머리 캐시키 검증
   qodana:
     name: Qodana (Code Quality)
     runs-on: ubuntu-latest
@@ -72,7 +72,9 @@ jobs:
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Build with Gradle
-        run: chmod +x ./gradlew && ./gradlew build -x test --no-daemon --build-cache --scan
+        run: chmod +x ./gradlew && ./gradlew build -x test --no-daemon --build-cache
+
+
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
