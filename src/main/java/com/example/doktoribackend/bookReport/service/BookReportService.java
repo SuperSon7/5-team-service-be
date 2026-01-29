@@ -4,10 +4,12 @@ import com.example.doktoribackend.bookReport.domain.BookReport;
 import com.example.doktoribackend.bookReport.dto.BookReportCreateRequest;
 import com.example.doktoribackend.bookReport.dto.BookReportCreateResponse;
 import com.example.doktoribackend.bookReport.dto.BookReportDetailResponse;
+import com.example.doktoribackend.bookReport.dto.BookReportProjection;
 import com.example.doktoribackend.bookReport.repository.BookReportRepository;
 import com.example.doktoribackend.book.domain.Book;
 import com.example.doktoribackend.common.error.ErrorCode;
 import com.example.doktoribackend.exception.BusinessException;
+import com.example.doktoribackend.exception.UserNotFoundException;
 import com.example.doktoribackend.meeting.domain.MeetingMemberStatus;
 import com.example.doktoribackend.meeting.domain.MeetingRound;
 import com.example.doktoribackend.meeting.repository.MeetingMemberRepository;
@@ -18,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -25,15 +28,18 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class BookReportService {
 
+    private static final int DAILY_SUBMISSION_LIMIT = 3;
+
     private final BookReportRepository bookReportRepository;
     private final MeetingRoundRepository meetingRoundRepository;
     private final MeetingMemberRepository meetingMemberRepository;
     private final UserRepository userRepository;
+    private final AiValidationService aiValidationService;
 
     @Transactional
     public BookReportCreateResponse createBookReport(Long userId, Long roundId, BookReportCreateRequest request) {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(UserNotFoundException::new);
 
         MeetingRound meetingRound = meetingRoundRepository.findById(roundId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROUND_NOT_FOUND));
@@ -50,32 +56,40 @@ public class BookReportService {
             throw new BusinessException(ErrorCode.BOOK_REPORT_NOT_WRITABLE);
         }
 
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        int todayCount = bookReportRepository.countTodaySubmissions(userId, startOfDay);
+        if (todayCount >= DAILY_SUBMISSION_LIMIT) {
+            throw new BusinessException(ErrorCode.DAILY_SUBMISSION_LIMIT_EXCEEDED);
+        }
+
         Optional<BookReport> existingReport = bookReportRepository
                 .findByUserIdAndMeetingRoundIdAndDeletedAtIsNull(userId, roundId);
 
         if (existingReport.isPresent()) {
-            BookReport bookReport = existingReport.get();
-            if (!bookReport.isResubmittable()) {
+            BookReport existing = existingReport.get();
+            if (!existing.isResubmittable()) {
                 throw new BusinessException(ErrorCode.BOOK_REPORT_ALREADY_SUBMITTED);
             }
-            bookReport.resubmit(request.content());
-        } else {
-            BookReport bookReport = BookReport.create(user, meetingRound, request.content());
-            bookReportRepository.save(bookReport);
+            existing.softDelete();
+            bookReportRepository.saveAndFlush(existing);
         }
+        BookReport bookReport = BookReport.create(user, meetingRound, request.content());
+        bookReportRepository.save(bookReport);
+
+        aiValidationService.validate(bookReport.getId(), meetingRound.getBook().getTitle(), request.content());
 
         return new BookReportCreateResponse(meetingId);
     }
 
     @Transactional(readOnly = true)
     public BookReportDetailResponse getMyBookReport(Long userId, Long roundId) {
-        MeetingRound meetingRound = meetingRoundRepository.findById(roundId)
+        MeetingRound meetingRound = meetingRoundRepository.findByIdWithBookAndMeeting(roundId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROUND_NOT_FOUND));
 
         Book book = meetingRound.getBook();
 
-        Optional<BookReport> bookReportOpt = bookReportRepository
-                .findByUserIdAndMeetingRoundIdAndDeletedAtIsNull(userId, roundId);
+        Optional<BookReportProjection> bookReportOpt = bookReportRepository
+                .findProjectionByUserIdAndMeetingRoundId(userId, roundId);
 
         BookReportDetailResponse.BookInfo bookInfo = new BookReportDetailResponse.BookInfo(
                 book.getTitle(),
@@ -87,12 +101,12 @@ public class BookReportService {
 
         BookReportDetailResponse.BookReportInfo bookReportInfo;
         if (bookReportOpt.isPresent()) {
-            BookReport bookReport = bookReportOpt.get();
+            BookReportProjection projection = bookReportOpt.get();
             bookReportInfo = new BookReportDetailResponse.BookReportInfo(
-                    bookReport.getId(),
-                    bookReport.getStatus().name(),
-                    bookReport.getContent(),
-                    bookReport.getRejectionReason()
+                    projection.getId(),
+                    projection.getStatus().name(),
+                    projection.getContent(),
+                    projection.getRejectionReason()
             );
         } else {
             String status = isWritablePeriod(meetingRound) ? "NOT_SUBMITTED" : "DEADLINE_PASSED";
