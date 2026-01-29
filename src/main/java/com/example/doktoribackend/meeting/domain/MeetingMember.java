@@ -8,7 +8,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "meeting_member",
+@Table(name = "meeting_members",
         uniqueConstraints = @UniqueConstraint(name = "uk_meeting_member", columnNames = {"meeting_id", "user_id"}),
         indexes = {
                 @Index(name = "idx_meeting_member_meeting_status_user", columnList = "meeting_id,status,user_id"),
@@ -60,6 +60,16 @@ public class MeetingMember extends BaseTimeEntity {
                 .role(MeetingMemberRole.LEADER)
                 .status(MeetingMemberStatus.APPROVED)
                 .approvedAt(approvedAt)
+                .build();
+    }
+
+    public static MeetingMember createParticipant(Meeting meeting, User user) {
+        return MeetingMember.builder()
+                .meeting(meeting)
+                .user(user)
+                .role(MeetingMemberRole.MEMBER)
+                .status(MeetingMemberStatus.PENDING)
+                .memberIntro(user.getMemberIntro())
                 .build();
     }
 }

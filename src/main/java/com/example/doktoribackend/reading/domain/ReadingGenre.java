@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "reading_genre", indexes = {
+@Table(name = "reading_genres", indexes = {
         @Index(name = "idx_reading_genre_deleted_priority", columnList = "deleted_at,priority")
 })
 @Getter
@@ -26,7 +26,7 @@ public class ReadingGenre extends BaseTimeEntity {
     @Column(nullable = false, length = 50)
     private String name;
 
-    @Column(nullable = false)
+    @Column(name= "priority", nullable = false, columnDefinition = "TINYINT")
     private Integer priority;
 
     @Column(name = "deleted_at")

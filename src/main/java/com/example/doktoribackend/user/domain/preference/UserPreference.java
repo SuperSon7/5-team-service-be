@@ -1,5 +1,8 @@
-package com.example.doktoribackend.user.domain;
+package com.example.doktoribackend.user.domain.preference;
 
+import com.example.doktoribackend.user.domain.Gender;
+import com.example.doktoribackend.user.domain.User;
+import com.example.doktoribackend.user.policy.ReadingVolume;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -35,6 +38,9 @@ public class UserPreference {
     @Column(name = "birth_year", nullable = false)
     private Integer birthYear;
 
+    @Column(name = "notification_agreement", nullable = false)
+    private boolean notificationAgreement = true;
+
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
@@ -47,16 +53,23 @@ public class UserPreference {
         this.user = user;
         this.readingVolume = readingVolume;
         this.gender = (gender != null) ? gender : Gender.UNKNOWN;
-        this.birthYear = birthYear;
+        this.birthYear = (birthYear != null) ? birthYear : 0;
     }
 
-    public void updateOAuthInfo(Gender gender, Integer birthYear) {
+    public void updateRequiredInfo(Gender gender, Integer birthYear, Boolean notificationAgreement) {
         if (gender != null) {
             this.gender = gender;
         }
         if (birthYear != null) {
             this.birthYear = birthYear;
         }
+        if (notificationAgreement != null) {
+            this.notificationAgreement = notificationAgreement;
+        }
+    }
+
+    public void changeNotificationAgreement(boolean agreed) {
+        this.notificationAgreement = agreed;
     }
 
     public void updateOnboardingInfo(ReadingVolume readingVolume) {

@@ -8,7 +8,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "meeting_round",
+@Table(name = "meeting_rounds",
         uniqueConstraints = @UniqueConstraint(name = "uk_meeting_round", columnNames = {"meeting_id", "round_no"})
 )
 @Getter
@@ -29,7 +29,7 @@ public class MeetingRound extends BaseTimeEntity {
     @JoinColumn(name = "book_id", nullable = false)
     private Book book;
 
-    @Column(name = "round_no", nullable = false)
+    @Column(name = "round_no", nullable = false, columnDefinition = "TINYINT")
     private Integer roundNo;
 
     @Enumerated(EnumType.STRING)
@@ -48,7 +48,7 @@ public class MeetingRound extends BaseTimeEntity {
     public static MeetingRound create(
             Meeting meeting,
             Book book,
-            int roundNo,
+            Integer roundNo,
             LocalDateTime startAt,
             LocalDateTime endAt
     ) {
@@ -60,5 +60,14 @@ public class MeetingRound extends BaseTimeEntity {
                 .startAt(startAt)
                 .endAt(endAt)
                 .build();
+    }
+
+    public void updateMeetingLink(String meetingLink) {
+        this.meetingLink = meetingLink;
+    }
+
+    // 양방향 관계 설정을 위한 메서드
+    public void setMeeting(Meeting meeting) {
+        this.meeting = meeting;
     }
 }

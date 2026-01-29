@@ -1,6 +1,7 @@
 package com.example.doktoribackend.meeting.domain;
 
 import com.example.doktoribackend.common.domain.BaseTimeEntity;
+import com.example.doktoribackend.reading.domain.ReadingGenre;
 import com.example.doktoribackend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,9 +9,11 @@ import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "meeting", indexes = {
+@Table(name = "meetings", indexes = {
         @Index(name = "idx_meeting_list", columnList = "status,deleted_at,id"),
         @Index(name = "idx_meeting_genre_status", columnList = "reading_genre_id,status,deleted_at,id")
 })
@@ -31,6 +34,10 @@ public class Meeting extends BaseTimeEntity {
     @Column(name = "reading_genre_id", nullable = false)
     private Long readingGenreId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reading_genre_id", insertable = false, updatable = false)
+    private ReadingGenre readingGenre;
+
     @Column(name = "leader_intro", length = 300)
     private String leaderIntro;
 
@@ -43,16 +50,16 @@ public class Meeting extends BaseTimeEntity {
     @Column(nullable = false, length = 300)
     private String description;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer capacity;
 
-    @Column(name = "current_count", nullable = false)
+    @Column(name = "current_count", nullable = false, columnDefinition = "TINYINT")
     private Integer currentCount;
 
-    @Column(name = "round_count", nullable = false)
+    @Column(name = "round_count", nullable = false, columnDefinition = "TINYINT")
     private Integer roundCount;
 
-    @Column(name = "current_round", nullable = false)
+    @Column(name = "current_round", nullable = false, columnDefinition = "TINYINT")
     private Integer currentRound;
 
     @Enumerated(EnumType.STRING)
@@ -66,7 +73,7 @@ public class Meeting extends BaseTimeEntity {
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
-    @Column(name = "duration_minutes", nullable = false)
+    @Column(name = "duration_minutes", nullable = false, columnDefinition = "SMALLINT")
     private Integer durationMinutes;
 
     @Column(name = "first_round_at", nullable = false)
@@ -78,6 +85,11 @@ public class Meeting extends BaseTimeEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("roundNo ASC")
+    @Builder.Default
+    private List<MeetingRound> meetingRounds = new ArrayList<>();
+
     public static Meeting create(
             User leaderUser,
             Long readingGenreId,
@@ -85,14 +97,14 @@ public class Meeting extends BaseTimeEntity {
             String meetingImagePath,
             String title,
             String description,
-            int capacity,
-            int roundCount,
+            Integer capacity,
+            Integer roundCount,
             MeetingDayOfWeek dayOfWeek,
             LocalTime startTime,
-            int durationMinutes,
+            Integer durationMinutes,
             LocalDateTime firstRoundAt,
             LocalDate recruitmentDeadline,
-            int currentCount
+            Integer currentCount
     ) {
         return Meeting.builder()
                 .leaderUser(leaderUser)
@@ -112,5 +124,16 @@ public class Meeting extends BaseTimeEntity {
                 .firstRoundAt(firstRoundAt)
                 .recruitmentDeadline(recruitmentDeadline)
                 .build();
+    }
+
+    // 양방향 관계 편의 메서드
+    public void addRound(MeetingRound round) {
+        meetingRounds.add(round);
+        round.setMeeting(this);
+    }
+
+    public void removeRound(MeetingRound round) {
+        meetingRounds.remove(round);
+        round.setMeeting(null);
     }
 }

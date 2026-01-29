@@ -19,7 +19,7 @@ import java.util.Set;
 public class MeetingCreateRequest {
 
     @NotBlank
-    @Schema(example = "https://cdn.example.com/meetings/2026/01/10/uuid-1234.png")
+    @Schema(example = "https://doktori-dev-images.s3.ap-northeast-2.amazonaws.com/images/meetings/36ba1999-7622-4275-b44e-9642d234b6bb.png")
     private String meetingImagePath;
 
     @NotBlank
@@ -112,13 +112,13 @@ public class MeetingCreateRequest {
         }
         Set<Integer> numbers = new HashSet<>();
         for (RoundRequest round : rounds) {
-            if (round == null || round.getRoundNumber() == null) {
+            if (round == null || round.getRoundNo() == null) {
                 return false;
             }
-            if (round.getRoundNumber() < 1 || round.getRoundNumber() > roundCount) {
+            if (round.getRoundNo() < 1 || round.getRoundNo() > roundCount) {
                 return false;
             }
-            if (!numbers.add(round.getRoundNumber())) {
+            if (!numbers.add(round.getRoundNo())) {
                 return false;
             }
         }
@@ -140,11 +140,11 @@ public class MeetingCreateRequest {
         @NotNull
         @Min(1)
         @Schema(example = "1")
-        private Integer roundNumber;
+        private Integer roundNo;
 
         @NotNull
         @JsonDeserialize(using = FlexibleLocalDateDeserializer.class)
-        @Schema(example = "2026/01/12")
+        @Schema(example = "2026-01-12")
         private LocalDate date;
     }
 
@@ -184,15 +184,16 @@ public class MeetingCreateRequest {
         @Schema(example = "아몬드")
         private String title;
 
-        @Schema(example = "[\"손원평\"]")
-        private List<@NotBlank @Size(max = 100) String> authors;
+        @Size(max = 255)
+        @Schema(example = "손원평")
+        private String authors;
 
         @Size(max = 255)
         @Schema(example = "출판사")
         private String publisher;
 
         @Size(max = 500)
-        @Schema(example = "https://image.kr/book/1.jpg")
+        @Schema(example = "https://search1.kakaocdn.net/thumb/R120x174.q85/?fname=http%3A%2F%2Ft1.daumcdn.net%2Flbook%2Fimage%2F1467038")
         private String thumbnailUrl;
 
         @JsonDeserialize(using = FlexibleLocalDateDeserializer.class)

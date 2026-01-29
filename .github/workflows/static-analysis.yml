@@ -2,7 +2,7 @@ name: Static Analysis (JDK 21)
 
 on:
   pull_request:
-    branches: [ dev, main ]
+    branches: [ develop, main ]
   push:
     branches: [ main ]
   workflow_dispatch:
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 코드 품질 분석 (Qodana)
+  # 코드 품질 분석 (Qodana) 프라이머리 캐시키 검증
   qodana:
     name: Qodana (Code Quality)
     runs-on: ubuntu-latest
@@ -33,22 +33,20 @@ jobs:
 
       - name: Run Qodana
         uses: JetBrains/qodana-action@v2024.3
+        with:
+          results-dir: ${{ runner.temp }}/qodana-results
+          upload-result: true
+          cache-default-branch-only: false
+          primary-cache-key: qodana-${{ hashFiles('build.gradle', 'settings.gradle', 'gradle.properties') }}
+          additional-cache-key: qodana-base
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
 
-      - name: Upload Qodana report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: qodana-report
-          path: ${{ github.workspace }}/qodana
-          retention-days: 7
-
       - name: Upload SARIF to GitHub
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: success()
         with:
-          sarif_file: ${{ github.workspace }}/qodana/results/qodana.sarif.json
+          sarif_file: ${{ runner.temp }}/qodana-results/qodana.sarif.json
           category: qodana
 
   # 보안 취약점 분석 (CodeQL)
@@ -65,6 +63,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: gradle
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -73,7 +72,7 @@ jobs:
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Build with Gradle
-        run: chmod +x ./gradlew && ./gradlew build -x test --no-daemon
+        run: chmod +x ./gradlew && ./gradlew build -x test --no-daemon --build-cache
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

@@ -1,0 +1,36 @@
+name: 🔙 Manual Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: '롤백할 서비스 (all 선택 권장)'
+        required: true
+        type: choice
+        options:
+          - all
+          - be
+          - fe
+          - ai
+      environment:
+        description: '대상 환경'
+        required: true
+        default: 'develop'
+        type: choice
+        options:
+          - develop
+          - prod
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute Rollback
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ inputs.environment == 'prod' && secrets.EC2_HOST || secrets.DEV_EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # 롤백 명령 실행 (rollback 인자 전달)
+            bash /home/ubuntu/app/deploy.sh ${{ inputs.service }} ${{ inputs.environment }} rollback

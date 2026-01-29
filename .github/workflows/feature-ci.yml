@@ -8,7 +8,7 @@ on:
       - 'src/**'
       - 'build.gradle'
       - '.github/workflows/feature-ci.yml'
-
+# 변경 트리거...
 # 중복 실행 방지
 concurrency:
   group: backend-feature-ci-${{ github.ref }}
@@ -31,33 +31,39 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
-
-      - name: Install dependencies
-        run: ./gradlew --no-daemon dependencies
-
-      # Quality Gate only
-      - name: Run Checkstyle
-        run: ./gradlew checkstyleMain checkstyleTest --no-daemon
-
-      # Build only (no test)
-      - name: Build with Gradle
-        run: ./gradlew build --no-daemon -x test
+      - name: Build & Checkstyle
+        run: |
+          chmod +x ./gradlew
+          ./gradlew checkstyleMain checkstyleTest build -x test --no-daemon --build-cache
 
       # Notification
       - name: Notify Discord on failure
         if: failure()
         run: |
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -1)
+          COMMIT_AUTHOR="${{ github.event.head_commit.author.name }}"
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          ACTIONS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d '{
-                 "content": "❌ **Backend Feature CI Failed!**",
-                 "embeds": [{
-                   "title": "Build Details",
-                   "description": "저장소: ${{ github.repository }}\n브랜치: ${{ github.ref_name }}\n커밋: ${{ github.sha }}",
-                   "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-                   "color": 15158528
+               -d "{
+                 \"content\": \"❌ **Backend Feature CI 실패**\",
+                 \"embeds\": [{
+                   \"title\": \"🔴 Feature 브랜치 빌드 실패\",
+                   \"color\": 15158528,
+                   \"url\": \"$ACTIONS_URL\",
+                   \"fields\": [
+                     {\"name\": \"📦 저장소\", \"value\": \"\`${{ github.repository }}\`\", \"inline\": true},
+                     {\"name\": \"🌿 브랜치\", \"value\": \"\`${{ github.ref_name }}\`\", \"inline\": true},
+                     {\"name\": \"🔖 커밋\", \"value\": \"[\`$SHORT_SHA\`]($COMMIT_URL)\", \"inline\": true},
+                     {\"name\": \"💬 커밋 메시지\", \"value\": \"$COMMIT_MSG\", \"inline\": false},
+                     {\"name\": \"👤 작성자\", \"value\": \"$COMMIT_AUTHOR\", \"inline\": true},
+                     {\"name\": \"📋 상세 로그\", \"value\": \"[Actions에서 확인]($ACTIONS_URL)\", \"inline\": true}
+                   ],
+                   \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
                  }]
-               }' \
+               }" \
                ${{ secrets.DISCORD_WEBHOOK_URL }}

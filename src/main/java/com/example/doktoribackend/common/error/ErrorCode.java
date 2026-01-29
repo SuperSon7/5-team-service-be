@@ -35,8 +35,53 @@ public enum ErrorCode {
     REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_EXPIRED"," 리프레시 토큰이 만료되었습니다."),
     INVALID_USER_ID(HttpStatus.BAD_REQUEST, "INVALID_USER_ID", "유효하지 않은 사용자 ID입니다."),
 
+    // External API
+    UPSTREAM_KAKAO_FAILED(HttpStatus.BAD_GATEWAY, "UPSTREAM_KAKAO_FAILED", "카카오 API 호출에 실패했습니다."),
+
     // User
-    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "존재하지 않는 사용자입니다.");
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "존재하지 않는 사용자입니다."),
+    PROFILE_ALREADY_COMPLETED(HttpStatus.CONFLICT, "PROFILE_ALREADY_COMPLETED", "이미 프로필 필수 정보를 완료했습니다."),
+    ONBOARDING_ALREADY_COMPLETED(HttpStatus.CONFLICT, "ONBOARDING_ALREADY_COMPLETED", "이미 온보딩을 완료했습니다."),
+
+    // Policy
+    POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_NOT_FOUND", "정책을 찾을 수 없습니다."),
+
+    //S3
+    S3_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "S3_UPLOAD_FAILED", "파일 업로드에 실패했습니다."),
+    S3_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "S3_DELETE_FAILED", "파일 삭제에 실패했습니다."),
+    INVALID_IMG_URL(HttpStatus.INTERNAL_SERVER_ERROR, "INVALID_IMG_URL", "이미지 url이 올바르지 않습니다."),
+    FILE_NAME_IS_NOT_BLANK(HttpStatus.BAD_REQUEST, "FILE_NAME_IS_NOT_BLANK", "파일 이름은 공백일 수 없습니다."),
+    CONTENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "CONTENT_TYPE_NOT_ALLOWED", "허용되지 않는 컨텐츠 타입입니다."),
+    INVALID_S3_KEY(HttpStatus.BAD_REQUEST, "INVALID_S3_KEY", "유효하지 않은 S3 키입니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE_SIZE_EXCEEDED", "허용된 파일 크기를 초과했습니다."),
+    INVALID_FILE_SIZE(HttpStatus.BAD_REQUEST, "INVALID_FILE_SIZE", "파일 크기가 유효하지 않습니다."),
+    INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, "INVALID_FILE_EXTENSION", "허용되지 않은 파일 확장자입니다."),
+    CONTENT_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "CONTENT_TYPE_MISMATCH", "파일 확장자와 콘텐츠 타입이 일치하지 않습니다."),
+
+    //Meeting
+    MEETING_NOT_FOUND(HttpStatus.NOT_FOUND, "MEETING_NOT_FOUND", "존재하지 않는 모임입니다."),
+    JOIN_REQUEST_ALREADY_EXISTS(HttpStatus.CONFLICT, "JOIN_REQUEST_ALREADY_EXISTS", "이미 참여 요청이 접수된 모임입니다."),
+    JOIN_REQUEST_BLOCKED(HttpStatus.FORBIDDEN, "JOIN_REQUEST_BLOCKED", "해당 모임에 참여할 수 없습니다."),
+    RECRUITMENT_CLOSED(HttpStatus.CONFLICT, "RECRUITMENT_CLOSED", "모집이 마감된 모임입니다."),
+    CAPACITY_FULL(HttpStatus.CONFLICT, "CAPACITY_FULL", "모집 정원이 가득 찼습니다."),
+
+    // Pagination
+    PAGINATION_INVALID_CURSOR(HttpStatus.BAD_REQUEST, "PAGINATION_INVALID_CURSOR", "cursorId는 1 이상의 정수여야 합니다."),
+    PAGINATION_SIZE_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "PAGINATION_SIZE_OUT_OF_RANGE", "size는 1~10 사이여야 합니다."),
+    INVALID_STATUS_PARAMETER(HttpStatus.BAD_REQUEST, "INVALID_STATUS_PARAMETER", "status는 ACTIVE 또는 INACTIVE여야 합니다."),
+
+    // Notification
+    NOTIFICATION_TYPE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_TYPE_NOT_FOUND", "알림 유형을 찾을 수 없습니다."),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "알림을 찾을 수 없습니다."),
+
+    // MeetingRound
+    ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND_NOT_FOUND", "모임 회차를 찾을 수 없습니다."),
+
+    // BookReport
+    BOOK_REPORT_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "BOOK_REPORT_ALREADY_SUBMITTED", "이미 독후감을 제출했습니다."),
+    BOOK_REPORT_NOT_WRITABLE(HttpStatus.CONFLICT, "BOOK_REPORT_NOT_WRITABLE", "독후감 작성 가능 시간이 아닙니다."),
+    DAILY_SUBMISSION_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "DAILY_SUBMISSION_LIMIT_EXCEEDED", "일일 독후감 제출 횟수(3회)를 초과했습니다.");
+
 
     private final HttpStatus status;
     private final String code;

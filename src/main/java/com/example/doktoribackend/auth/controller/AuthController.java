@@ -4,9 +4,9 @@ import com.example.doktoribackend.auth.service.TokenService;
 import com.example.doktoribackend.common.response.ApiResult;
 import com.example.doktoribackend.common.util.CookieUtil;
 import com.example.doktoribackend.common.error.ErrorCode;
-import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.auth.dto.AccessTokenResponse;
 import com.example.doktoribackend.auth.dto.TokenResponse;
+import com.example.doktoribackend.exception.CustomException;
 import com.example.doktoribackend.security.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +24,7 @@ public class AuthController {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenService tokenService;
+    private final CookieUtil cookieUtil;
 
     @Operation(
             summary = "Access Token 갱신",
@@ -34,15 +35,15 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response) {
 
-        String refreshToken = CookieUtil.resolveRefreshToken(request);
+        String refreshToken = cookieUtil.resolveRefreshToken(request);
 
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw new BusinessException(ErrorCode.NOT_EXIST_REFRESH_TOKEN);
+            throw new CustomException(ErrorCode.NOT_EXIST_REFRESH_TOKEN);
         }
 
         TokenResponse refreshed = tokenService.refreshTokens(refreshToken);
 
-        CookieUtil.addRefreshTokenCookie(
+        cookieUtil.addRefreshTokenCookie(
                 response,
                 refreshed.refreshToken(),
                 jwtTokenProvider.getRefreshExpSeconds()
@@ -59,11 +60,11 @@ public class AuthController {
     )
     @DeleteMapping("/tokens")
     public ResponseEntity<ApiResult<Void>> logout(HttpServletRequest request, HttpServletResponse response) {
-        String refreshToken = CookieUtil.resolveRefreshToken(request);
+        String refreshToken = cookieUtil.resolveRefreshToken(request);
         if (refreshToken != null && !refreshToken.isBlank()) {
             tokenService.logout(refreshToken);
         }
-        CookieUtil.removeRefreshTokenCookie(response);
+        cookieUtil.removeRefreshTokenCookie(response);
         return ResponseEntity.noContent().build();
     }
 }

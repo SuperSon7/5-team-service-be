@@ -9,6 +9,7 @@ import com.example.doktoribackend.auth.dto.TokenResponse;
 import com.example.doktoribackend.security.jwt.JwtTokenProvider;
 import com.example.doktoribackend.user.domain.User;
 import com.example.doktoribackend.user.repository.UserRepository;
+import com.example.doktoribackend.notification.repository.UserPushTokenRepository;
 import com.github.f4b6a3.tsid.TsidCreator;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
@@ -28,10 +29,11 @@ public class TokenService {
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
+    private final UserPushTokenRepository userPushTokenRepository;
 
     @Transactional
     public TokenResponse issueTokens(User user) {
-        revokeAllUserTokens(user.getId());
+        revokeAllUserTokens(user);
         return createTokenPair(user);
     }
 
@@ -70,15 +72,17 @@ public class TokenService {
             if (!stored.isRevoked()) {
                 stored.revoke();
             }
+
+            userPushTokenRepository.deleteById(stored.getUserId());
         } catch (OptimisticLockingFailureException e) {
             log.debug("Token already revoked during logout");
         }
     }
 
     @Transactional
-    public void revokeAllUserTokens(Long userId) {
+    public void revokeAllUserTokens(User user) {
         List<RefreshToken> tokens = refreshTokenRepository
-                .findAllByUserIdAndRevokedFalse(userId);
+                .findAllByUserAndRevokedFalse(user);
 
         if (!tokens.isEmpty()) {
             tokens.forEach(RefreshToken::revoke);
@@ -103,18 +107,18 @@ public class TokenService {
         String tokenId = TsidCreator.getTsid().toString();
         String refreshToken = jwtTokenProvider.createRefreshToken(user, tokenId);
 
-        saveRefreshToken(tokenId, user.getId());
+        saveRefreshToken(tokenId, user);
 
         return new TokenResponse(accessToken, refreshToken);
     }
 
-    private void saveRefreshToken(String tokenId, Long userId) {
+    private void saveRefreshToken(String tokenId, User user) {
         LocalDateTime expiresAt = LocalDateTime.now()
                 .plusSeconds(jwtTokenProvider.getRefreshExpSeconds());
 
         RefreshToken entity = RefreshToken.builder()
                 .tokenId(tokenId)
-                .userId(userId)
+                .user(user)
                 .expiresAt(expiresAt)
                 .build();
 
