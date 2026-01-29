@@ -156,8 +156,7 @@ jobs:
           host: ${{ steps.env.outputs.host == 'EC2_HOST' && secrets.EC2_HOST || secrets.DEV_EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: bash /home/ubuntu/app/deploy.sh be ${{ steps.env.outputs.env_name }}
-
+          script: bash /home/ubuntu/app/deploy.sh be ${{ steps.env.outputs.env_name }} ${{ github.sha }}
       - name: Notify Discord
         if: always()
         run: |
