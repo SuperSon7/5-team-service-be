@@ -36,8 +36,6 @@ jobs:
           chmod +x ./gradlew
           ./gradlew checkstyleMain checkstyleTest build -x test --no-daemon --build-cache
 
-
-
       # Notification
       - name: Notify Discord on failure
         if: failure()
