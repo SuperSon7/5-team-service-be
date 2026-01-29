@@ -31,7 +31,7 @@ public class AiValidationService {
     @Value("${ai.api-key}")
     private String apiKey;
 
-    private static final Duration TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration TIMEOUT = Duration.ofSeconds(30);
     private static final int MAX_RETRY = 3;
 
     public void validate(Long bookReportId, String bookTitle, String content) {
@@ -68,20 +68,17 @@ public class AiValidationService {
     private void updateBookReportStatus(Long bookReportId, AiValidationResponse response) {
         BookReport bookReport = bookReportRepository.findById(bookReportId)
                 .orElse(null);
-        log.warn(response.rejectionReason());
 
         if (bookReport == null) {
-            log.warn("BookReport not found for id: {}", bookReportId);
             return;
         }
 
-        if (BookReportStatus.APPROVED.name().equals(response.status())) {
+        if ("SUBMITTED".equals(response.status())) {
             bookReport.approve();
-        } else if (BookReportStatus.REJECTED.name().equals(response.status())) {
+        } else if ("REJECTED".equals(response.status())) {
             bookReport.reject(response.rejectionReason());
         }
 
         bookReportRepository.save(bookReport);
-        log.info("BookReport {} validated: {}", bookReportId, response.status());
     }
 }
