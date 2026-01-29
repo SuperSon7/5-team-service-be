@@ -150,6 +150,7 @@ jobs:
           strip_components: 2
           overwrite: false
 
+      # 메인 배포 테스트
       - name: Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
