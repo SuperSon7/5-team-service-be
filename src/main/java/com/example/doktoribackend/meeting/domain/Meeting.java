@@ -136,4 +136,19 @@ public class Meeting extends BaseTimeEntity {
         meetingRounds.remove(round);
         round.setMeeting(null);
     }
+
+    // 비즈니스 로직 메서드
+    public void incrementCurrentCount() {
+        this.currentCount++;
+    }
+
+    public void updateStatusToFinished() {
+        this.status = MeetingStatus.FINISHED;
+    }
+
+    public boolean isRecruitmentClosed() {
+        // 모집 마감일이 지났거나 정원이 가득 찬 경우
+        LocalDate today = LocalDate.now();
+        return today.isAfter(recruitmentDeadline) || currentCount >= capacity;
+    }
 }

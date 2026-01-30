@@ -153,7 +153,7 @@ public class MeetingService {
                 .map(this::toListItem)
                 .toList();
 
-        Long nextCursorId = hasNext ? mapped.get(mapped.size() - 1).getMeetingId() : null;
+        Long nextCursorId = hasNext ? mapped.getLast().getMeetingId() : null;
 
         PageInfo pageInfo = new PageInfo(nextCursorId, hasNext, size);
         return new MeetingListResponse(mapped, pageInfo);
@@ -202,31 +202,49 @@ public class MeetingService {
             throw new BusinessException(ErrorCode.RECRUITMENT_CLOSED);
         }
 
-        // 4. 중복 신청 방지
-        meetingMemberRepository.findByMeetingIdAndUserId(meetingId, userId)
-                .ifPresent(existingMember -> {
-                    MeetingMemberStatus status = existingMember.getStatus();
-                    // PENDING, APPROVED: 이미 신청/승인됨
-                    if (status == MeetingMemberStatus.PENDING || status == MeetingMemberStatus.APPROVED) {
-                        throw new BusinessException(ErrorCode.JOIN_REQUEST_ALREADY_EXISTS);
-                    }
-                    // KICKED: 강퇴된 사용자는 재신청 불가
-                    if (status == MeetingMemberStatus.KICKED) {
-                        throw new BusinessException(ErrorCode.JOIN_REQUEST_BLOCKED);
-                    }
-                    // REJECTED, LEFT: 재신청 가능 (if문 통과)
-                });
+        // 4. 모집 마감일 확인
+        LocalDate today = LocalDate.now();
+        if (today.isAfter(meeting.getRecruitmentDeadline())) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_CLOSED);
+        }
 
         // 5. 정원 확인 (현재 승인된 인원 기준)
         if (meeting.getCurrentCount() >= meeting.getCapacity()) {
             throw new BusinessException(ErrorCode.CAPACITY_FULL);
         }
 
-        // 6. 참여 요청 생성
+        // 6. 중복 신청 방지
+        meetingMemberRepository.findByMeetingIdAndUserId(meetingId, userId)
+                .ifPresent(existingMember -> {
+                    MeetingMemberStatus status = existingMember.getStatus();
+                    // APPROVED: 이미 승인됨
+                    if (status == MeetingMemberStatus.APPROVED) {
+                        throw new BusinessException(ErrorCode.JOIN_REQUEST_ALREADY_EXISTS);
+                    }
+                    // KICKED: 강퇴된 사용자는 재신청 불가
+                    if (status == MeetingMemberStatus.KICKED) {
+                        throw new BusinessException(ErrorCode.JOIN_REQUEST_BLOCKED);
+                    }
+                    // PENDING은 추후 사용 예정 (현재 정책에서는 발생하지 않음)
+                    if (status == MeetingMemberStatus.PENDING) {
+                        throw new BusinessException(ErrorCode.JOIN_REQUEST_ALREADY_EXISTS);
+                    }
+                    // REJECTED, LEFT: 재신청 가능 (if문 통과)
+                });
+
+        // 7. 참여 요청 생성 (현재 정책: 즉시 승인)
         MeetingMember member = MeetingMember.createParticipant(meeting, user);
         meetingMemberRepository.save(member);
 
-        // 7. 응답 반환
+        // 8. 현재 인원수 증가
+        meeting.incrementCurrentCount();
+
+        // 9. 모집 완료 상태 확인 및 업데이트
+        if (meeting.isRecruitmentClosed()) {
+            meeting.updateStatusToFinished();
+        }
+
+        // 10. 응답 반환
         return JoinMeetingResponse.from(member);
     }
 
@@ -241,7 +259,7 @@ public class MeetingService {
                 .map(this::toListItem)
                 .toList();
 
-        Long nextCursorId = hasNext ? mapped.get(mapped.size() - 1).getMeetingId() : null;
+        Long nextCursorId = hasNext ? mapped.getLast().getMeetingId() : null;
 
         PageInfo pageInfo = new PageInfo(nextCursorId, hasNext, size);
         return new MeetingListResponse(mapped, pageInfo);
@@ -251,25 +269,25 @@ public class MeetingService {
     public MyMeetingListResponse getMyMeetings(Long userId, MyMeetingListRequest request) {
         int size = request.getSizeOrDefault();
         boolean activeOnly = request.isActiveFilter();
-        
+
         List<MeetingListRow> results = meetingRepository.findMyMeetings(
-                userId, 
-                request.getCursorId(), 
+                userId,
+                request.getCursorId(),
                 activeOnly,
                 size + 1
         );
 
         boolean hasNext = results.size() > size;
         List<MeetingListRow> sliced = hasNext ? results.subList(0, size) : results;
-        
+
         LocalDateTime now = LocalDateTime.now();
         List<MyMeetingItem> mapped = sliced.stream()
                 .map(row -> toMyMeetingItem(row, now))
                 .toList();
 
-        Long nextCursorId = hasNext ? mapped.get(mapped.size() - 1).getMeetingId() : null;
+        Long nextCursorId = hasNext ? mapped.getLast().getMeetingId() : null;
         PageInfo pageInfo = new PageInfo(nextCursorId, hasNext, size);
-        
+
         return new MyMeetingListResponse(mapped, pageInfo);
     }
 
@@ -277,7 +295,7 @@ public class MeetingService {
     public MyMeetingListResponse getMyTodayMeetings(Long userId) {
         LocalDate today = LocalDate.now();
         List<MeetingListRow> results = meetingRepository.findMyTodayMeetings(userId, today);
-        
+
         LocalDateTime now = LocalDateTime.now();
         List<MyMeetingItem> mapped = results.stream()
                 .map(row -> toMyMeetingItem(row, now))
@@ -285,7 +303,7 @@ public class MeetingService {
 
         // 페이징 없음
         PageInfo pageInfo = new PageInfo(null, false, 10);
-        
+
         return new MyMeetingListResponse(mapped, pageInfo);
     }
 
@@ -295,33 +313,33 @@ public class MeetingService {
         Meeting meeting = meetingRepository.findByIdWithLeader(meetingId)
                 .filter(m -> m.getDeletedAt() == null)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEETING_NOT_FOUND));
-        
+
         // 2. 나의 참여 상태 확인
         MeetingMember myMember = meetingMemberRepository.findByMeetingIdAndUserId(meetingId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEETING_NOT_FOUND));
-        
+
         // APPROVED나 PENDING이 아니면 접근 불가
-        if (myMember.getStatus() != MeetingMemberStatus.APPROVED && 
-            myMember.getStatus() != MeetingMemberStatus.PENDING) {
+        if (myMember.getStatus() != MeetingMemberStatus.APPROVED &&
+                myMember.getStatus() != MeetingMemberStatus.PENDING) {
             throw new BusinessException(ErrorCode.MEETING_NOT_FOUND);
         }
-        
+
         // 3. ReadingGenre 조회
         ReadingGenre readingGenre = readingGenreRepository.findById(meeting.getReadingGenreId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE));
-        
+
         // 4. 나의 역할 판단
         boolean isLeader = meeting.getLeaderUser().getId().equals(userId);
         String myRole = isLeader ? "LEADER" : "MEMBER";
-        
+
         // 5. 회차 정보 조회
         List<MeetingRound> rounds = meetingRoundRepository.findByMeetingIdWithBook(meetingId);
-        
+
         LocalDateTime now = LocalDateTime.now();
         List<MyMeetingDetailResponse.RoundDetail> roundDetails = rounds.stream()
-                .map(round -> toRoundDetail(round, userId, now))
+                .map(round -> toRoundDetail(round, userId, now, meeting, myMember, rounds))
                 .collect(Collectors.toList());
-        
+
         // 6. DTO 생성
         return MyMeetingDetailResponse.builder()
                 .meetingId(meeting.getId())
@@ -340,46 +358,76 @@ public class MeetingService {
                 .currentRoundNo(meeting.getCurrentRound())
                 .build();
     }
-    
-    private MyMeetingDetailResponse.RoundDetail toRoundDetail(MeetingRound round, Long userId, LocalDateTime now) {
+
+    private MyMeetingDetailResponse.RoundDetail toRoundDetail(
+            MeetingRound round,
+            Long userId,
+            LocalDateTime now,
+            Meeting meeting,
+            MeetingMember myMember,
+            List<MeetingRound> allRounds
+    ) {
         // 1. dDay 계산
         LocalDate roundDate = round.getStartAt().toLocalDate();
         LocalDate today = LocalDate.now();
         int dDay = (int) ChronoUnit.DAYS.between(today, roundDate);
-        
+
         // 2. 독후감 조회
         Optional<BookReport> bookReportOpt = bookReportRepository
                 .findByUserIdAndMeetingRoundIdAndDeletedAtIsNull(userId, round.getId());
-        
+
+        // 3. writableFrom 계산
+        LocalDateTime writableFrom;
+        if (round.getRoundNo() == 1) {
+            // 첫 회차: 모임 신청 승인 시점부터
+            // 현재 정책: 신청 시 즉시 승인 (approvedAt 사용)
+            // 추후 정책: 상태 기반 판단 필요
+            writableFrom = myMember.getApprovedAt();
+        } else {
+            // 이전 회차: 이전 회차 종료 시점부터
+            Optional<MeetingRound> previousRound = allRounds.stream()
+                    .filter(r -> r.getRoundNo() == round.getRoundNo() - 1)
+                    .findFirst();
+            writableFrom = previousRound
+                    .map(MeetingRound::getEndAt)
+                    .orElse(null);
+        }
+
+        // 4. writableUntil 계산 (모임 시작 24시간 전까지)
+        LocalDateTime writableUntil = round.getStartAt().minusHours(24);
+
+        // 5. BookReportInfo 생성
         MyMeetingDetailResponse.RoundDetail.BookReportInfo bookReportInfo;
         if (bookReportOpt.isPresent()) {
             BookReport bookReport = bookReportOpt.get();
             bookReportInfo = MyMeetingDetailResponse.RoundDetail.BookReportInfo.builder()
                     .status(bookReport.getStatus().name())
                     .id(bookReport.getId())
-                    .writableUntil(round.getStartAt())
+                    .writableFrom(writableFrom)
+                    .writableUntil(writableUntil)
                     .build();
         } else {
             bookReportInfo = MyMeetingDetailResponse.RoundDetail.BookReportInfo.builder()
                     .status(null)  // 미제출
                     .id(null)
-                    .writableUntil(round.getStartAt())
+                    .writableFrom(writableFrom)
+                    .writableUntil(writableUntil)
                     .build();
         }
-        
-        // 3. meetingLink 공개 여부 (10분 전부터)
+
+        // 6. meetingLink 공개 여부 (10분 전부터)
         LocalDateTime tenMinutesBefore = round.getStartAt().minusMinutes(10);
         boolean isLinkAvailable = !now.isBefore(tenMinutesBefore) && now.isBefore(round.getEndAt());
         String meetingLink = (isLinkAvailable && dDay >= 0) ? round.getMeetingLink() : null;
-        
-        // 4. canJoinMeeting 판단
-        boolean canJoinMeeting = isLinkAvailable && 
-                                 bookReportOpt.isPresent() &&
-                                 bookReportOpt.get().getStatus().name().equals("APPROVED");
-        
-        // 5. Book 정보
+
+        // 7. canJoinMeeting 판단
+        boolean canJoinMeeting = isLinkAvailable &&
+                bookReportOpt.isPresent() &&
+                bookReportOpt.get().getStatus().name().equals("APPROVED");
+
+        // 8. Book 정보
         Book book = round.getBook();
-        MyMeetingDetailResponse.RoundDetail.BookInfo bookInfo = 
+        MyMeetingDetailResponse.RoundDetail.BookInfo bookInfo =
                 MyMeetingDetailResponse.RoundDetail.BookInfo.builder()
                         .title(book.getTitle())
                         .authors(book.getAuthors())
@@ -387,7 +435,7 @@ public class MeetingService {
                         .thumbnailUrl(book.getThumbnailUrl())
                         .publishedAt(book.getPublishedAt())
                         .build();
-        
+
         return MyMeetingDetailResponse.RoundDetail.builder()
                 .roundId(round.getId())
                 .roundNo(round.getRoundNo())
@@ -404,11 +452,11 @@ public class MeetingService {
         // Meeting 조회 (currentRound 필요)
         Meeting meeting = meetingRepository.findById(row.getMeetingId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEETING_NOT_FOUND));
-        
+
         // 다음 회차 날짜 조회
         List<LocalDateTime> nextRounds = meetingRoundRepository.findNextRoundDate(row.getMeetingId(), now);
-        LocalDate meetingDate = nextRounds.isEmpty() ? null : nextRounds.get(0).toLocalDate();
-        
+        LocalDate meetingDate = nextRounds.isEmpty() ? null : nextRounds.getFirst().toLocalDate();
+
         return MyMeetingItem.builder()
                 .meetingId(row.getMeetingId())
                 .meetingImagePath(imageUrlResolver.toUrl(row.getMeetingImagePath()))
