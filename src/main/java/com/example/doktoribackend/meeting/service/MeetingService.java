@@ -153,7 +153,7 @@ public class MeetingService {
                 .map(this::toListItem)
                 .toList();
 
-        Long nextCursorId = hasNext ? mapped.get(mapped.size() - 1).getMeetingId() : null;
+        Long nextCursorId = hasNext ? mapped.getLast().getMeetingId() : null;
 
         PageInfo pageInfo = new PageInfo(nextCursorId, hasNext, size);
         return new MeetingListResponse(mapped, pageInfo);
@@ -202,7 +202,18 @@ public class MeetingService {
             throw new BusinessException(ErrorCode.RECRUITMENT_CLOSED);
         }
 
-        // 4. 중복 신청 방지
+        // 4. 모집 마감일 확인
+        LocalDate today = LocalDate.now();
+        if (today.isAfter(meeting.getRecruitmentDeadline())) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_CLOSED);
+        }
+
+        // 5. 정원 확인 (현재 승인된 인원 기준)
+        if (meeting.getCurrentCount() >= meeting.getCapacity()) {
+            throw new BusinessException(ErrorCode.CAPACITY_FULL);
+        }
+
+        // 6. 중복 신청 방지
         meetingMemberRepository.findByMeetingIdAndUserId(meetingId, userId)
                 .ifPresent(existingMember -> {
                     MeetingMemberStatus status = existingMember.getStatus();
@@ -221,16 +232,19 @@ public class MeetingService {
                     // REJECTED, LEFT: 재신청 가능 (if문 통과)
                 });
 
-        // 5. 정원 확인 (현재 승인된 인원 기준)
-        if (meeting.getCurrentCount() >= meeting.getCapacity()) {
-            throw new BusinessException(ErrorCode.CAPACITY_FULL);
-        }
-
-        // 6. 참여 요청 생성 (현재 정책: 즉시 승인)
+        // 7. 참여 요청 생성 (현재 정책: 즉시 승인)
         MeetingMember member = MeetingMember.createParticipant(meeting, user);
         meetingMemberRepository.save(member);
 
-        // 7. 응답 반환
+        // 8. 현재 인원수 증가
+        meeting.incrementCurrentCount();
+
+        // 9. 모집 완료 상태 확인 및 업데이트
+        if (meeting.isRecruitmentClosed()) {
+            meeting.updateStatusToFinished();
+        }
+
+        // 10. 응답 반환
         return JoinMeetingResponse.from(member);
     }
 
@@ -245,7 +259,7 @@ public class MeetingService {
                 .map(this::toListItem)
                 .toList();
 
-        Long nextCursorId = hasNext ? mapped.get(mapped.size() - 1).getMeetingId() : null;
+        Long nextCursorId = hasNext ? mapped.getLast().getMeetingId() : null;
 
         PageInfo pageInfo = new PageInfo(nextCursorId, hasNext, size);
         return new MeetingListResponse(mapped, pageInfo);
@@ -271,7 +285,7 @@ public class MeetingService {
                 .map(row -> toMyMeetingItem(row, now))
                 .toList();
 
-        Long nextCursorId = hasNext ? mapped.get(mapped.size() - 1).getMeetingId() : null;
+        Long nextCursorId = hasNext ? mapped.getLast().getMeetingId() : null;
         PageInfo pageInfo = new PageInfo(nextCursorId, hasNext, size);
 
         return new MyMeetingListResponse(mapped, pageInfo);
@@ -441,7 +455,7 @@ public class MeetingService {
 
         // 다음 회차 날짜 조회
         List<LocalDateTime> nextRounds = meetingRoundRepository.findNextRoundDate(row.getMeetingId(), now);
-        LocalDate meetingDate = nextRounds.isEmpty() ? null : nextRounds.get(0).toLocalDate();
+        LocalDate meetingDate = nextRounds.isEmpty() ? null : nextRounds.getFirst().toLocalDate();
 
         return MyMeetingItem.builder()
                 .meetingId(row.getMeetingId())
