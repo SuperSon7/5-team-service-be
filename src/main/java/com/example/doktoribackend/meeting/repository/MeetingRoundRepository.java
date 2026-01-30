@@ -48,6 +48,12 @@ public interface MeetingRoundRepository extends JpaRepository<MeetingRound, Long
             @Param("roundNo") Integer roundNo
     );
 
+    @Query("SELECT mr FROM MeetingRound mr " +
+            "JOIN FETCH mr.book " +
+            "JOIN FETCH mr.meeting " +
+            "WHERE mr.id = :id")
+    Optional<MeetingRound> findByIdWithBookAndMeeting(@Param("id") Long id);
+
     // 나의 모임 리스트: 다음 회차 날짜 조회
     @Query("SELECT mr.startAt FROM MeetingRound mr " +
            "WHERE mr.meeting.id = :meetingId " +

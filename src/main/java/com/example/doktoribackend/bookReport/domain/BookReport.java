@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class BookReport extends BaseTimeEntity {
+    private static final int REJECTION_REASON_MAX_LENGTH = 200;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -52,14 +53,33 @@ public class BookReport extends BaseTimeEntity {
         return bookReport;
     }
 
-    public void resubmit(String content) {
-        this.content = content;
-        this.status = BookReportStatus.PENDING_REVIEW;
-        this.rejectionReason = null;
-        this.aiValidatedAt = null;
-    }
-
     public boolean isResubmittable() {
         return this.status == BookReportStatus.REJECTED;
+    }
+
+    public void approve() {
+        this.status = BookReportStatus.APPROVED;
+        this.aiValidatedAt = LocalDateTime.now();
+        this.rejectionReason = null;
+    }
+
+    public void reject(String rejectionReason) {
+        this.status = BookReportStatus.REJECTED;
+        this.aiValidatedAt = LocalDateTime.now();
+        if (rejectionReason == null) {
+            this.rejectionReason = null;
+            return;
+        }
+
+        if (rejectionReason.length() > REJECTION_REASON_MAX_LENGTH) {
+            this.rejectionReason = rejectionReason.substring(0, REJECTION_REASON_MAX_LENGTH);
+            return;
+        }
+
+        this.rejectionReason = rejectionReason;
+    }
+
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
     }
 }

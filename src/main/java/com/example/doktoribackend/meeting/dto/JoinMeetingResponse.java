@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -15,7 +15,7 @@ public class JoinMeetingResponse {
     private String status;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private Instant requestedAt;
+    private LocalDateTime requestedAt;
 
     public static JoinMeetingResponse from(MeetingMember member) {
         return JoinMeetingResponse.builder()
