@@ -1,6 +1,6 @@
 spring:
-  config:
-    import: 'optional:aws-parameterstore:/doktori/${spring.profiles.active}/'
+  application:
+    name: doktori-backend
 
   flyway:
     enabled: true
