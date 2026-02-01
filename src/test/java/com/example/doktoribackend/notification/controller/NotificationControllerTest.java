@@ -97,7 +97,7 @@ class NotificationControllerTest {
         given(notificationService.hasUnread(1L)).willReturn(new HasUnreadResponse(true));
 
         // when & then
-        mockMvc.perform(get("/notifications/has-unread")
+        mockMvc.perform(get("/notifications/unread")
                         .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails(1L)))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -108,11 +108,11 @@ class NotificationControllerTest {
     @DisplayName("PUT /notifications/{id}/read: 알림을 읽음 처리한다")
     void markAsRead_success() throws Exception {
         // when & then
-        mockMvc.perform(put("/notifications/100/read")
+        mockMvc.perform(put("/notifications/100")
                         .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails(1L)))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         then(notificationService).should().markAsRead(1L, 100L);
     }
@@ -121,11 +121,11 @@ class NotificationControllerTest {
     @DisplayName("PUT /notifications/read-all: 모든 알림을 읽음 처리한다")
     void markAllAsRead_success() throws Exception {
         // when & then
-        mockMvc.perform(put("/notifications/read-all")
+        mockMvc.perform(put("/notifications")
                         .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails(1L)))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         then(notificationService).should().markAllAsRead(1L);
     }
@@ -142,7 +142,7 @@ class NotificationControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         then(pushTokenService).should().registerToken(1L, "fcm-token-123", Platform.ANDROID);
     }
