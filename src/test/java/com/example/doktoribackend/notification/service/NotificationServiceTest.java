@@ -2,6 +2,7 @@ package com.example.doktoribackend.notification.service;
 
 import com.example.doktoribackend.common.error.ErrorCode;
 import com.example.doktoribackend.exception.BusinessException;
+import com.example.doktoribackend.exception.UserNotFoundException;
 import com.example.doktoribackend.notification.domain.Notification;
 import com.example.doktoribackend.notification.domain.NotificationType;
 import com.example.doktoribackend.notification.domain.NotificationTypeCode;
@@ -29,7 +30,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -121,9 +121,7 @@ class NotificationServiceTest {
                 NotificationTypeCode.ROUND_START_10M_BEFORE,
                 Map.of()
         ))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.USER_NOT_FOUND);
+                .isInstanceOf(UserNotFoundException.class);
 
         then(notificationRepository).should(never()).save(any());
     }
