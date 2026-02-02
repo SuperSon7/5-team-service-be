@@ -1,7 +1,6 @@
 package com.example.doktoribackend.bookReport.service;
 
 import com.example.doktoribackend.bookReport.domain.BookReport;
-import com.example.doktoribackend.bookReport.domain.BookReportStatus;
 import com.example.doktoribackend.bookReport.dto.AiValidationRequest;
 import com.example.doktoribackend.bookReport.dto.AiValidationResponse;
 import com.example.doktoribackend.bookReport.repository.BookReportRepository;
