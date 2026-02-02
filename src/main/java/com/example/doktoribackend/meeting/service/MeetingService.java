@@ -3,6 +3,7 @@ package com.example.doktoribackend.meeting.service;
 import com.example.doktoribackend.book.domain.Book;
 import com.example.doktoribackend.book.repository.BookRepository;
 import com.example.doktoribackend.bookReport.domain.BookReport;
+import com.example.doktoribackend.bookReport.domain.BookReportStatus;
 import com.example.doktoribackend.bookReport.domain.BookReportStatusResolver;
 import com.example.doktoribackend.bookReport.domain.UserBookReportStatus;
 import com.example.doktoribackend.bookReport.repository.BookReportRepository;
@@ -388,12 +389,13 @@ public class MeetingService {
         // 6. meetingLink 공개 여부 (10분 전부터)
         LocalDateTime tenMinutesBefore = round.getStartAt().minusMinutes(10);
         boolean isLinkAvailable = !now.isBefore(tenMinutesBefore) && now.isBefore(round.getEndAt());
-        String meetingLink = (isLinkAvailable && dDay >= 0) ? round.getMeetingLink() : null;
 
         // 7. canJoinMeeting 판단
         boolean canJoinMeeting = isLinkAvailable &&
                 bookReportOpt.isPresent() &&
-                bookReportOpt.get().getStatus().name().equals("APPROVED");
+                bookReportOpt.get().getStatus() == BookReportStatus.APPROVED;
+
+        String meetingLink = canJoinMeeting ? round.getMeetingLink() : null;
 
         // 8. Book 정보
         Book book = round.getBook();
