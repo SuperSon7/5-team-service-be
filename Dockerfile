@@ -5,17 +5,22 @@ FROM eclipse-temurin:21.0.5_11-jdk-alpine AS build
 
 WORKDIR /workspace
 
-# Gradle wrapper + 빌드 설정 파일만 먼저 복사 → 의존성 캐싱
+# Gradle wrapper + 빌드 설정 파일 (루트 + 서브모듈) → 의존성 캐싱
 COPY gradlew .
 COPY gradle gradle
 COPY build.gradle settings.gradle ./
+COPY api/build.gradle api/
+COPY chat/build.gradle chat/
+COPY common/build.gradle common/
 
 RUN chmod +x gradlew \
     && ./gradlew dependencies --no-daemon --stacktrace
 
 # 소스 복사 후 빌드 (테스트 제외)
-COPY src src
-RUN ./gradlew bootJar --no-daemon -x test
+COPY api/src api/src
+COPY chat/src chat/src
+COPY common/src common/src
+RUN ./gradlew :api:bootJar --no-daemon -x test
 
 ########################################
 # Stage 2: JAR 레이어 추출
@@ -23,7 +28,7 @@ RUN ./gradlew bootJar --no-daemon -x test
 FROM eclipse-temurin:21.0.5_11-jdk-alpine AS extract
 
 WORKDIR /workspace
-COPY --from=build /workspace/build/libs/*.jar application.jar
+COPY --from=build /workspace/api/build/libs/doktori-api.jar application.jar
 RUN java -Djarmode=tools -jar application.jar extract --layers --launcher --destination extracted
 
 ########################################
