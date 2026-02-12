@@ -28,8 +28,8 @@ public class RoomRound {
     @JoinColumn(name = "room_id", nullable = false)
     private ChattingRoom chattingRoom;
 
-    @Column(name = "round_number", nullable = false)
-    private Short roundNumber;
+    @Column(name = "round_number", nullable = false, columnDefinition = "TINYINT UNSIGNED")
+    private Integer roundNumber;
 
     @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
@@ -38,7 +38,7 @@ public class RoomRound {
     private LocalDateTime endedAt;
 
     @Builder
-    public RoomRound(ChattingRoom chattingRoom, Short roundNumber) {
+    public RoomRound(ChattingRoom chattingRoom, Integer roundNumber) {
         this.chattingRoom = chattingRoom;
         this.roundNumber = roundNumber;
         this.startedAt = LocalDateTime.now();

@@ -12,5 +12,5 @@ import java.io.Serializable;
 public class QuizChoiceId implements Serializable {
 
     private Long roomId;
-    private Short choiceNumber;
+    private Integer choiceNumber;
 }

@@ -18,8 +18,8 @@ public class QuizChoice {
     private Long roomId;
 
     @Id
-    @Column(name = "choice_number")
-    private Short choiceNumber;
+    @Column(name = "choice_number", columnDefinition = "TINYINT")
+    private Integer choiceNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", insertable = false, updatable = false)
@@ -29,7 +29,7 @@ public class QuizChoice {
     private String choiceText;
 
     @Builder
-    public QuizChoice(Long roomId, Quiz quiz, Short choiceNumber, String choiceText) {
+    public QuizChoice(Long roomId, Quiz quiz, Integer choiceNumber, String choiceText) {
         this.roomId = roomId;
         this.quiz = quiz;
         this.choiceNumber = choiceNumber;

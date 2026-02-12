@@ -30,11 +30,11 @@ public class ChattingRoom {
     @Column(nullable = false, length = 50)
     private String description;
 
-    @Column(nullable = false)
-    private Short capacity;
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
+    private Integer capacity;
 
-    @Column(nullable = false)
-    private Short duration = 30;
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
+    private Integer duration = 30;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -53,7 +53,7 @@ public class ChattingRoom {
     private List<ChattingRoomMember> members = new ArrayList<>();
 
     @Builder
-    public ChattingRoom(String topic, String description, Short capacity, Short duration) {
+    public ChattingRoom(String topic, String description, Integer capacity, Integer duration) {
         this.topic = topic;
         this.description = description;
         this.capacity = capacity;

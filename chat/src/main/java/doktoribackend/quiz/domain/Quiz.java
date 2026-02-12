@@ -28,21 +28,21 @@ public class Quiz {
     @Column(nullable = false, length = 50)
     private String question;
 
-    @Column(name = "correct_choice_number", nullable = false)
-    private Short correctChoiceNumber;
+    @Column(name = "correct_choice_number", nullable = false, columnDefinition = "TINYINT")
+    private Integer correctChoiceNumber;
 
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QuizChoice> choices = new ArrayList<>();
 
     @Builder
-    public Quiz(ChattingRoom chattingRoom, String question, Short correctChoiceNumber) {
+    public Quiz(ChattingRoom chattingRoom, String question, Integer correctChoiceNumber) {
         this.chattingRoom = chattingRoom;
         this.question = question;
         this.correctChoiceNumber = correctChoiceNumber;
         chattingRoom.linkQuiz(this);
     }
 
-    public boolean isCorrect(Short choiceNumber) {
+    public boolean isCorrect(Integer choiceNumber) {
         return this.correctChoiceNumber.equals(choiceNumber);
     }
 
