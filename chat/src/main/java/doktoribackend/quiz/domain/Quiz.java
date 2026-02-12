@@ -32,7 +32,7 @@ public class Quiz {
     private Integer correctChoiceNumber;
 
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<QuizChoice> choices = new ArrayList<>();
+    private final List<QuizChoice> choices = new ArrayList<>();
 
     @Builder
     public Quiz(ChattingRoom chattingRoom, String question, Integer correctChoiceNumber) {

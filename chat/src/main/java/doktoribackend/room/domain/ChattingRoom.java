@@ -47,10 +47,10 @@ public class ChattingRoom {
     private Quiz quiz;
 
     @OneToMany(mappedBy = "chattingRoom", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<RoomRound> rounds = new ArrayList<>();
+    private final List<RoomRound> rounds = new ArrayList<>();
 
     @OneToMany(mappedBy = "chattingRoom", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<ChattingRoomMember> members = new ArrayList<>();
+    private final List<ChattingRoomMember> members = new ArrayList<>();
 
     @Builder
     public ChattingRoom(String topic, String description, Integer capacity, Integer duration) {
