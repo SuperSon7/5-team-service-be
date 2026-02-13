@@ -354,6 +354,7 @@ public class MeetingService {
         return MyMeetingDetailResponse.builder()
                 .meetingId(meeting.getId())
                 .meetingImagePath(imageUrlResolver.toUrl(meeting.getMeetingImagePath()))
+                .meetingImageKey(meeting.getMeetingImagePath())
                 .title(meeting.getTitle())
                 .readingGenreName(readingGenre.getName())
                 .leaderInfo(MyMeetingDetailResponse.LeaderInfo.builder()
