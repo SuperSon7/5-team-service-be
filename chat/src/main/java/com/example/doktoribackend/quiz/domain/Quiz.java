@@ -41,6 +41,7 @@ public class Quiz {
 
     @Builder
     private Quiz(ChattingRoom chattingRoom, String question, Integer correctChoiceNumber) {
+        this.roomId = chattingRoom.getId();
         this.chattingRoom = chattingRoom;
         this.question = question;
         this.correctChoiceNumber = correctChoiceNumber;
