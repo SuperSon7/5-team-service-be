@@ -54,9 +54,9 @@ public class ChatRoomService {
         validateNotAlreadyJoined(userId);
 
         ChattingRoom room = ChattingRoom.create(request);
+        chattingRoomRepository.save(room);
 
         createQuiz(room, request.quiz());
-        chattingRoomRepository.save(room);
 
         room.increaseMemberCount();
 
@@ -68,7 +68,7 @@ public class ChatRoomService {
 
     private void validateCapacity(Integer capacity) {
         if (!ALLOWED_CAPACITIES.contains(capacity)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ErrorCode.CHAT_ROOM_INVALID_CAPACITY);
         }
     }
 
@@ -85,7 +85,7 @@ public class ChatRoomService {
         Quiz quiz = Quiz.create(room, quizRequest);
 
         for (ChatRoomCreateRequest.QuizChoiceRequest choiceRequest : quizRequest.choices()) {
-            QuizChoice.create(quiz, choiceRequest);
+            quiz.addChoice(QuizChoice.create(quiz, choiceRequest));
         }
     }
 }

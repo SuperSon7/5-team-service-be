@@ -89,6 +89,7 @@ public enum ErrorCode {
     DAILY_SUBMISSION_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "DAILY_SUBMISSION_LIMIT_EXCEEDED", "일일 독후감 제출 횟수(3회)를 초과했습니다."),
 
     // ChatRoom
+    CHAT_ROOM_INVALID_CAPACITY(HttpStatus.BAD_REQUEST, "CHAT_ROOM_INVALID_CAPACITY", "채팅방 정원은 2, 4, 6명만 가능합니다."),
     CHAT_ROOM_ALREADY_JOINED(HttpStatus.CONFLICT, "CHAT_ROOM_ALREADY_JOINED", "이미 참여 중인 채팅방이 있어 새 채팅방을 생성할 수 없습니다.");
 
 

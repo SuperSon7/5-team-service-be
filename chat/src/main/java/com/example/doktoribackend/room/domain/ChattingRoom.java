@@ -44,7 +44,7 @@ public class ChattingRoom {
     @Column(nullable = false, length = 20)
     private RoomStatus status = RoomStatus.WAITING;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private LocalDateTime createdAt;
 
     @OneToOne(mappedBy = "chattingRoom", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
