@@ -28,7 +28,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -93,7 +92,7 @@ class ChatRoomServiceTest {
         }
 
         @Test
-        @DisplayName("생성된 방에 Quiz와 QuizChoice 4개가 연결된다")
+        @DisplayName("생성된 방에 Quiz가 연결되고 QuizChoice 4개가 저장된다")
         void createChatRoom_quizCreated() {
             // given
             ChatRoomCreateRequest request = createValidRequest(4);
@@ -173,7 +172,7 @@ class ChatRoomServiceTest {
             assertThatThrownBy(() -> chatRoomService.createChatRoom(USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+                    .isEqualTo(ErrorCode.CHAT_ROOM_INVALID_CAPACITY);
 
             then(chattingRoomRepository).should(never()).save(any());
         }
@@ -199,6 +198,24 @@ class ChatRoomServiceTest {
                     .isEqualTo(ErrorCode.CHAT_ROOM_ALREADY_JOINED);
 
             then(chattingRoomRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("LEFT 또는 DISCONNECTED 상태만 있으면 새 채팅방을 생성할 수 있다")
+        void leftOrDisconnected_canCreateNewRoom() {
+            // given
+            ChatRoomCreateRequest request = createValidRequest(4);
+            given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
+                    eq(USER_ID), any())).willReturn(false);
+            given(chattingRoomRepository.save(any(ChattingRoom.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            ChatRoomCreateResponse response = chatRoomService.createChatRoom(USER_ID, request);
+
+            // then
+            assertThat(response).isNotNull();
+            then(chattingRoomRepository).should().save(any(ChattingRoom.class));
         }
     }
 
