@@ -34,6 +34,9 @@ public class ChattingRoom {
     @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer capacity;
 
+    @Column(name = "current_member_count", nullable = false, columnDefinition = "TINYINT UNSIGNED")
+    private Integer currentMemberCount = 0;
+
     @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer duration = 30;
 
@@ -41,7 +44,7 @@ public class ChattingRoom {
     @Column(nullable = false, length = 20)
     private RoomStatus status = RoomStatus.WAITING;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private LocalDateTime createdAt;
 
     @OneToOne(mappedBy = "chattingRoom", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -75,6 +78,16 @@ public class ChattingRoom {
 
     public void cancel() {
         this.status = RoomStatus.CANCELLED;
+    }
+
+    public void increaseMemberCount() {
+        this.currentMemberCount++;
+    }
+
+    public void decreaseMemberCount() {
+        if (this.currentMemberCount > 0) {
+            this.currentMemberCount--;
+        }
     }
 
     public void linkQuiz(Quiz quiz) {

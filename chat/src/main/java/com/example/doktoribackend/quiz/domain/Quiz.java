@@ -32,7 +32,7 @@ public class Quiz {
     @Column(name = "correct_choice_number", nullable = false, columnDefinition = "TINYINT")
     private Integer correctChoiceNumber;
 
-    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL)
     private final List<QuizChoice> choices = new ArrayList<>();
 
     public static Quiz create(ChattingRoom room, ChatRoomCreateRequest.QuizRequest request) {
