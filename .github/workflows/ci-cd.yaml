@@ -129,6 +129,9 @@ jobs:
           fi
           echo "image-tag=${TAG}" >> $GITHUB_OUTPUT
 
+      - name: Set up QEMU (for ARM64 cross-build)
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -137,6 +140,7 @@ jobs:
         with:
           context: .
           target: api
+          platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.api-tags }}
           cache-from: type=gha,scope=api
@@ -147,6 +151,7 @@ jobs:
         with:
           context: .
           target: chat
+          platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.chat-tags }}
           cache-from: |
@@ -173,6 +178,8 @@ jobs:
           COMMANDS=$(jq -n --arg registry "${{ secrets.ECR_REGISTRY }}" '[
             "set -e",
             ("aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin " + $registry),
+            ("export ECR_REGISTRY=" + $registry),
+            "export DB_PASSWORD=$(aws ssm get-parameter --name /doktori/dev/DB_PASSWORD --with-decryption --query Parameter.Value --output text 2>/dev/null || echo changeme)",
             "docker compose -f /home/ubuntu/app/docker-compose.yml pull",
             "docker compose -f /home/ubuntu/app/docker-compose.yml up -d",
             "docker image prune -f"
