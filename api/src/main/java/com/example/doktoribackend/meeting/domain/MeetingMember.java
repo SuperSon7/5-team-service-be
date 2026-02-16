@@ -68,7 +68,7 @@ public class MeetingMember extends BaseTimeEntity {
                 .meeting(meeting)
                 .user(user)
                 .role(MeetingMemberRole.MEMBER)
-                .status(MeetingMemberStatus.APPROVED)
+                .status(MeetingMemberStatus.PENDING)
                 .memberIntro(user.getMemberIntro())
                 .approvedAt(LocalDateTime.now())
                 .build();

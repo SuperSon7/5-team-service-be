@@ -220,7 +220,7 @@ public class MeetingService {
                     // REJECTED, LEFT: 재신청 가능 (if문 통과)
                 });
 
-        // 7. 참여 요청 생성 (현재 정책: 즉시 승인)
+        // 7. 참여 요청 생성
         MeetingMember member = MeetingMember.createParticipant(meeting, user);
         meetingMemberRepository.save(member);
 
