@@ -181,9 +181,8 @@ jobs:
           COMMANDS=$(jq -n --arg registry "${{ secrets.ECR_REGISTRY }}" '[
             "set -e",
             ("export ECR_REGISTRY=" + $registry),
-            "export DB_PASSWORD=$(aws ssm get-parameter --name /doktori/dev/DB_PASSWORD --with-decryption --query Parameter.Value --output text 2>/dev/null || echo changeme)",
-            "docker compose -f /home/ubuntu/app/docker-compose.yml pull",
-            "docker compose -f /home/ubuntu/app/docker-compose.yml up -d",
+            "docker compose -f /home/ubuntu/app/docker-compose.yml pull backend chat",
+            "docker compose -f /home/ubuntu/app/docker-compose.yml up -d --no-deps backend chat",
             "docker image prune -f"
           ]')
 
