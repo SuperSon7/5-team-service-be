@@ -11,12 +11,16 @@ import com.example.doktoribackend.quiz.domain.QuizChoice;
 import com.example.doktoribackend.room.domain.ChattingRoom;
 import com.example.doktoribackend.room.domain.ChattingRoomMember;
 import com.example.doktoribackend.room.domain.MemberStatus;
+import com.example.doktoribackend.room.domain.Position;
 import com.example.doktoribackend.room.domain.RoomStatus;
 import com.example.doktoribackend.room.dto.ChatRoomCreateRequest;
 import com.example.doktoribackend.room.dto.ChatRoomCreateResponse;
+import com.example.doktoribackend.room.dto.ChatRoomJoinRequest;
 import com.example.doktoribackend.room.dto.ChatRoomListItem;
 import com.example.doktoribackend.room.dto.ChatRoomListResponse;
 import com.example.doktoribackend.room.dto.PageInfo;
+import com.example.doktoribackend.room.dto.WaitingRoomMemberItem;
+import com.example.doktoribackend.room.dto.WaitingRoomResponse;
 import com.example.doktoribackend.room.repository.ChattingRoomMemberRepository;
 import com.example.doktoribackend.room.repository.ChattingRoomRepository;
 import com.example.doktoribackend.user.domain.UserInfo;
@@ -34,6 +38,8 @@ import java.util.List;
 public class ChatRoomService {
 
     private static final List<Integer> ALLOWED_CAPACITIES = List.of(2, 4, 6);
+    private static final List<MemberStatus> ACTIVE_STATUSES =
+            List.of(MemberStatus.WAITING, MemberStatus.JOINED, MemberStatus.DISCONNECTED);
 
     private final ChattingRoomRepository chattingRoomRepository;
     private final ChattingRoomMemberRepository chattingRoomMemberRepository;
@@ -105,6 +111,74 @@ public class ChatRoomService {
         }
     }
 
+    @Transactional
+    public WaitingRoomResponse joinChatRoom(Long roomId, Long userId, ChatRoomJoinRequest request) {
+        ChattingRoom room = chattingRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+
+        if (room.getStatus() != RoomStatus.WAITING) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_WAITING);
+        }
+
+        validateNotAlreadyJoined(userId);
+        validateQuizAnswer(room, request.quizAnswer());
+        validateRoomNotFull(room);
+        validatePositionNotFull(roomId, room.getCapacity(), request.position());
+
+        UserInfo userInfo = userInfoRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        ChattingRoomMember member = ChattingRoomMember.createParticipant(
+                room, userId, userInfo.getNickname(), userInfo.getProfileImagePath(), request.position());
+        chattingRoomMemberRepository.save(member);
+
+        room.increaseMemberCount();
+
+        return buildWaitingRoomResponse(room);
+    }
+
+    private void validateQuizAnswer(ChattingRoom room, Integer quizAnswer) {
+        Quiz quiz = room.getQuiz();
+        if (quiz == null) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_QUIZ_NOT_FOUND);
+        }
+        if (!quiz.isCorrect(quizAnswer)) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_QUIZ_WRONG_ANSWER);
+        }
+    }
+
+    private void validateRoomNotFull(ChattingRoom room) {
+        if (room.getCurrentMemberCount() >= room.getCapacity()) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_FULL);
+        }
+    }
+
+    private void validatePositionNotFull(Long roomId, int capacity, Position position) {
+        int maxPerPosition = capacity / 2;
+        int positionCount = chattingRoomMemberRepository
+                .countByChattingRoomIdAndPositionAndStatusIn(roomId, position, ACTIVE_STATUSES);
+        if (positionCount >= maxPerPosition) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_POSITION_FULL);
+        }
+    }
+
+    WaitingRoomResponse buildWaitingRoomResponse(ChattingRoom room) {
+        List<ChattingRoomMember> activeMembers = chattingRoomMemberRepository
+                .findByChattingRoomIdAndStatusIn(room.getId(), ACTIVE_STATUSES);
+
+        int agreeCount = (int) activeMembers.stream()
+                .filter(m -> m.getPosition() == Position.AGREE).count();
+        int disagreeCount = (int) activeMembers.stream()
+                .filter(m -> m.getPosition() == Position.DISAGREE).count();
+        int maxPerPosition = room.getCapacity() / 2;
+
+        List<WaitingRoomMemberItem> members = activeMembers.stream()
+                .map(WaitingRoomMemberItem::from)
+                .toList();
+
+        return new WaitingRoomResponse(room.getId(), agreeCount, disagreeCount, maxPerPosition, members);
+    }
+
     private void validateRoomNotEnded(ChattingRoom room) {
         if (room.getStatus() == RoomStatus.ENDED || room.getStatus() == RoomStatus.CANCELLED) {
             throw new BusinessException(ErrorCode.CHAT_ROOM_ALREADY_ENDED);
@@ -113,8 +187,7 @@ public class ChatRoomService {
 
     private void leaveAllActiveMembers(Long roomId) {
         List<ChattingRoomMember> activeMembers = chattingRoomMemberRepository
-                .findByChattingRoomIdAndStatusIn(roomId,
-                        List.of(MemberStatus.WAITING, MemberStatus.JOINED, MemberStatus.DISCONNECTED));
+                .findByChattingRoomIdAndStatusIn(roomId, ACTIVE_STATUSES);
 
         for (ChattingRoomMember m : activeMembers) {
             m.leave();

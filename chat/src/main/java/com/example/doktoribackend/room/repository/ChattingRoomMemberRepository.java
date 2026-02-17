@@ -2,6 +2,7 @@ package com.example.doktoribackend.room.repository;
 
 import com.example.doktoribackend.room.domain.ChattingRoomMember;
 import com.example.doktoribackend.room.domain.MemberStatus;
+import com.example.doktoribackend.room.domain.Position;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -14,4 +15,6 @@ public interface ChattingRoomMemberRepository extends JpaRepository<ChattingRoom
     Optional<ChattingRoomMember> findByChattingRoomIdAndUserId(Long roomId, Long userId);
 
     List<ChattingRoomMember> findByChattingRoomIdAndStatusIn(Long roomId, List<MemberStatus> statuses);
+
+    int countByChattingRoomIdAndPositionAndStatusIn(Long roomId, Position position, List<MemberStatus> statuses);
 }
