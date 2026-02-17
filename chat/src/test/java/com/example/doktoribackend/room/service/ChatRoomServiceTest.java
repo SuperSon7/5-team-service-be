@@ -273,8 +273,8 @@ class ChatRoomServiceTest {
 
             // then
             assertThat(response.items()).hasSize(2);
-            assertThat(response.items().get(0).roomId()).isEqualTo(3L);
-            assertThat(response.items().get(0).topic()).isEqualTo("주제3");
+            assertThat(response.items().getFirst().roomId()).isEqualTo(3L);
+            assertThat(response.items().getFirst().topic()).isEqualTo("주제3");
             assertThat(response.items().get(0).capacity()).isEqualTo(4);
             assertThat(response.items().get(0).currentMemberCount()).isEqualTo(2);
             assertThat(response.items().get(1).roomId()).isEqualTo(2L);
@@ -362,7 +362,7 @@ class ChatRoomServiceTest {
 
             // then
             assertThat(response.items()).hasSize(2);
-            assertThat(response.items().get(0).roomId()).isEqualTo(4L);
+            assertThat(response.items().getFirst().roomId()).isEqualTo(4L);
             then(chattingRoomRepository).should().findByStatusWithCursor(
                     eq(RoomStatus.WAITING), eq(cursorId), any(PageRequest.class));
         }
