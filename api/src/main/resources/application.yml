@@ -44,7 +44,7 @@ springdoc:
     enabled: true
     path: /v1/api-docs
   swagger-ui:
-    path: /swagger-ui/index.html
+    path: /swagger-ui.html
     display-request-duration: true
     doc-expansion: list
     persistAuthorization: true
