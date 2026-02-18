@@ -1,6 +1,7 @@
 package com.example.doktoribackend.room.controller;
 
 import com.example.doktoribackend.common.error.ErrorCode;
+import com.example.doktoribackend.common.s3.ImageUrlResolver;
 import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.room.domain.MemberRole;
 import com.example.doktoribackend.room.domain.Position;
@@ -47,6 +48,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -68,6 +70,9 @@ class ChatRoomControllerTest {
 
     @MockitoBean
     JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    ImageUrlResolver imageUrlResolver;
 
     private static final Long USER_ID = 1L;
 
@@ -549,6 +554,61 @@ class ChatRoomControllerTest {
                             .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
                             .with(csrf()))
                     .andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
+    @DisplayName("채팅 시작")
+    class StartChatRoom {
+
+        @Test
+        @DisplayName("방장이 시작하면 200 OK를 반환한다")
+        void startChatRoom_success() throws Exception {
+            willDoNothing().given(chatRoomService).startChatRoom(10L, USER_ID);
+
+            mockMvc.perform(patch("/chat-rooms/10")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("OK"));
+
+            then(chatRoomService).should().startChatRoom(10L, USER_ID);
+        }
+
+        @Test
+        @DisplayName("방장이 아니면 403을 반환한다")
+        void startChatRoom_notHost() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_NOT_HOST))
+                    .given(chatRoomService).startChatRoom(10L, USER_ID);
+
+            mockMvc.perform(patch("/chat-rooms/10")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("채팅방이 없으면 404를 반환한다")
+        void startChatRoom_roomNotFound() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND))
+                    .given(chatRoomService).startChatRoom(999L, USER_ID);
+
+            mockMvc.perform(patch("/chat-rooms/999")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("상대 포지션 부족이면 409를 반환한다")
+        void startChatRoom_insufficientMembers() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_INSUFFICIENT_MEMBERS))
+                    .given(chatRoomService).startChatRoom(10L, USER_ID);
+
+            mockMvc.perform(patch("/chat-rooms/10")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isConflict());
         }
     }
 

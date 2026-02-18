@@ -5,6 +5,7 @@ import com.example.doktoribackend.book.repository.BookRepository;
 import com.example.doktoribackend.common.client.KakaoBookClient;
 import com.example.doktoribackend.common.client.KakaoBookResponse;
 import com.example.doktoribackend.common.error.ErrorCode;
+import com.example.doktoribackend.common.s3.ImageUrlResolver;
 import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.quiz.domain.Quiz;
 import com.example.doktoribackend.quiz.domain.QuizChoice;
@@ -12,6 +13,7 @@ import com.example.doktoribackend.room.domain.ChattingRoom;
 import com.example.doktoribackend.room.domain.ChattingRoomMember;
 import com.example.doktoribackend.room.domain.MemberStatus;
 import com.example.doktoribackend.room.domain.Position;
+import com.example.doktoribackend.room.domain.RoomRound;
 import com.example.doktoribackend.room.domain.RoomStatus;
 import com.example.doktoribackend.room.dto.ChatRoomCreateRequest;
 import com.example.doktoribackend.room.dto.ChatRoomCreateResponse;
@@ -49,6 +51,7 @@ public class ChatRoomService {
     private final KakaoBookClient kakaoBookClient;
     private final UserInfoRepository userInfoRepository;
     private final WaitingRoomSseService waitingRoomSseService;
+    private final ImageUrlResolver imageUrlResolver;
 
     @Transactional(readOnly = true)
     public ChatRoomListResponse getChatRooms(Long cursorId, int size) {
@@ -146,6 +149,46 @@ public class ChatRoomService {
         return response;
     }
 
+    @Transactional
+    public void startChatRoom(Long roomId, Long userId) {
+        ChattingRoom room = chattingRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+
+        if (room.getStatus() != RoomStatus.WAITING) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_WAITING);
+        }
+
+        ChattingRoomMember requester = chattingRoomMemberRepository.findByChattingRoomIdAndUserId(roomId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_MEMBER_NOT_FOUND));
+
+        if (!requester.isHost()) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_HOST);
+        }
+
+        Position oppositePosition = requester.getPosition() == Position.AGREE ? Position.DISAGREE : Position.AGREE;
+        int oppositeCount = chattingRoomMemberRepository
+                .countByChattingRoomIdAndPositionAndStatusIn(roomId, oppositePosition, ACTIVE_STATUSES);
+        if (oppositeCount < 1) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_INSUFFICIENT_MEMBERS);
+        }
+
+        room.startChatting();
+
+        List<ChattingRoomMember> waitingMembers = chattingRoomMemberRepository
+                .findByChattingRoomIdAndStatusIn(roomId, List.of(MemberStatus.WAITING));
+        for (ChattingRoomMember member : waitingMembers) {
+            member.join();
+        }
+
+        RoomRound firstRound = RoomRound.builder()
+                .chattingRoom(room)
+                .roundNumber(1)
+                .build();
+        room.getRounds().add(firstRound);
+
+        broadcastStartedAfterCommit(roomId);
+    }
+
     @Transactional(readOnly = true)
     public WaitingRoomResponse getWaitingRoom(Long roomId, Long userId) {
         ChattingRoom room = chattingRoomRepository.findById(roomId)
@@ -193,7 +236,7 @@ public class ChatRoomService {
         int maxPerPosition = room.getCapacity() / 2;
 
         List<WaitingRoomMemberItem> members = activeMembers.stream()
-                .map(WaitingRoomMemberItem::from)
+                .map(m -> WaitingRoomMemberItem.from(m, imageUrlResolver))
                 .toList();
 
         return new WaitingRoomResponse(room.getId(), agreeCount, disagreeCount, maxPerPosition, members);
@@ -213,6 +256,15 @@ public class ChatRoomService {
             @Override
             public void afterCommit() {
                 waitingRoomSseService.broadcastCancelledAndClose(roomId);
+            }
+        });
+    }
+
+    private void broadcastStartedAfterCommit(Long roomId) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                waitingRoomSseService.broadcastStartedAndClose(roomId);
             }
         });
     }

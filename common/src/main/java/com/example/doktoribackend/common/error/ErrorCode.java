@@ -102,7 +102,9 @@ public enum ErrorCode {
     CHAT_ROOM_POSITION_FULL(HttpStatus.CONFLICT, "CHAT_ROOM_POSITION_FULL", "해당 포지션의 정원이 가득 찼습니다."),
     CHAT_ROOM_QUIZ_WRONG_ANSWER(HttpStatus.FORBIDDEN, "CHAT_ROOM_QUIZ_WRONG_ANSWER", "퀴즈 정답이 아닙니다."),
     CHAT_ROOM_QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_ROOM_QUIZ_NOT_FOUND", "채팅방에 퀴즈가 존재하지 않습니다."),
-    CHAT_ROOM_NOT_WAITING(HttpStatus.CONFLICT, "CHAT_ROOM_NOT_WAITING", "대기 중인 채팅방만 참여할 수 있습니다.");
+    CHAT_ROOM_NOT_WAITING(HttpStatus.CONFLICT, "CHAT_ROOM_NOT_WAITING", "대기 중인 채팅방만 참여할 수 있습니다."),
+    CHAT_ROOM_NOT_HOST(HttpStatus.FORBIDDEN, "CHAT_ROOM_NOT_HOST", "방장만 채팅을 시작할 수 있습니다."),
+    CHAT_ROOM_INSUFFICIENT_MEMBERS(HttpStatus.CONFLICT, "CHAT_ROOM_INSUFFICIENT_MEMBERS", "상대 포지션에 최소 1명 이상의 멤버가 필요합니다.");
 
 
     private final HttpStatus status;
