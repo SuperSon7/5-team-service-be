@@ -11,6 +11,7 @@ public record MessageResponse(
         String senderNickname,
         MessageType messageType,
         String textMessage,
+        String filePath,
         LocalDateTime createdAt
 ) {
 
@@ -21,6 +22,7 @@ public record MessageResponse(
                 senderNickname,
                 message.getMessageType(),
                 message.getTextMessage(),
+                message.getFilePath(),
                 message.getCreatedAt()
         );
     }
