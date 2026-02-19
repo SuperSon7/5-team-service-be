@@ -180,6 +180,7 @@ jobs:
             ("export ECR_REGISTRY=" + $registry),
             "docker compose -f /home/ubuntu/app/docker-compose.yml pull backend chat",
             "docker compose -f /home/ubuntu/app/docker-compose.yml up -d --no-deps backend chat",
+            "sleep 10 && docker compose -f /home/ubuntu/app/docker-compose.yml exec -T nginx nginx -s reload",
             "docker image prune -f"
           ]')
 
