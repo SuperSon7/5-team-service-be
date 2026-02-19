@@ -7,7 +7,10 @@ import com.example.doktoribackend.room.dto.ChatRoomCreateRequest;
 import com.example.doktoribackend.room.dto.ChatRoomCreateResponse;
 import com.example.doktoribackend.room.dto.ChatRoomJoinRequest;
 import com.example.doktoribackend.room.dto.ChatRoomListResponse;
+import com.example.doktoribackend.room.dto.ChatRoomStartResponse;
 import com.example.doktoribackend.room.dto.WaitingRoomResponse;
+import com.example.doktoribackend.message.dto.MessageListResponse;
+import com.example.doktoribackend.message.service.MessageService;
 import com.example.doktoribackend.room.service.ChatRoomService;
 import com.example.doktoribackend.room.service.WaitingRoomSseService;
 import com.example.doktoribackend.security.CustomUserDetails;
@@ -36,6 +39,7 @@ public class ChatRoomController implements ChatRoomApi {
     private static final int MAX_SIZE = 20;
 
     private final ChatRoomService chatRoomService;
+    private final MessageService messageService;
     private final WaitingRoomSseService waitingRoomSseService;
 
     @GetMapping
@@ -97,14 +101,39 @@ public class ChatRoomController implements ChatRoomApi {
         return waitingRoomSseService.subscribe(roomId);
     }
 
-    @PatchMapping("/{roomId}")
+    @GetMapping("/{roomId}")
     @Override
-    public ResponseEntity<ApiResult<Void>> startChatRoom(
+    public ResponseEntity<ApiResult<ChatRoomStartResponse>> getChatRoomDetail(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long roomId
     ) {
-        chatRoomService.startChatRoom(roomId, userDetails.getId());
-        return ResponseEntity.ok(ApiResult.ok());
+        ChatRoomStartResponse response = chatRoomService.getChatRoomDetail(roomId, userDetails.getId());
+        return ResponseEntity.ok(ApiResult.ok(response));
+    }
+
+    @GetMapping("/{roomId}/messages")
+    @Override
+    public ResponseEntity<ApiResult<MessageListResponse>> getMessages(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long roomId,
+            @RequestParam(required = false) Long cursorId,
+            @RequestParam(defaultValue = "20") Integer size
+    ) {
+        validateSize(size);
+        validateCursorId(cursorId);
+
+        MessageListResponse response = messageService.getMessages(roomId, userDetails.getId(), cursorId, size);
+        return ResponseEntity.ok(ApiResult.ok(response));
+    }
+
+    @PatchMapping("/{roomId}")
+    @Override
+    public ResponseEntity<ApiResult<ChatRoomStartResponse>> startChatRoom(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long roomId
+    ) {
+        ChatRoomStartResponse response = chatRoomService.startChatRoom(roomId, userDetails.getId());
+        return ResponseEntity.ok(ApiResult.ok(response));
     }
 
     @DeleteMapping("/{roomId}/members/me")
