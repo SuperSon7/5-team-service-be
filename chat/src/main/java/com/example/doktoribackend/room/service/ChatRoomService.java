@@ -370,7 +370,7 @@ public class ChatRoomService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                messagingTemplate.convertAndSend("/topic/chat-rooms/" + roomId + "/next-round", response);
+                messagingTemplate.convertAndSend("/topic/chat-rooms/" + roomId, response);
             }
         });
     }

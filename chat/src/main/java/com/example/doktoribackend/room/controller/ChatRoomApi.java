@@ -517,7 +517,7 @@ public interface ChatRoomApi {
 
     @CommonErrorResponses
     @AuthErrorResponses
-    @Operation(summary = "다음 라운드 전환", description = "방장이 현재 라운드를 종료하고 다음 라운드로 전환합니다. 최대 3라운드까지 가능합니다. 전환 결과는 STOMP `/topic/chat-rooms/{roomId}/next-round`로 브로드캐스트됩니다.")
+    @Operation(summary = "다음 라운드 전환", description = "방장이 현재 라운드를 종료하고 다음 라운드로 전환합니다. 최대 3라운드까지 가능합니다. 전환 결과는 STOMP `/topic/chat-rooms/{roomId}`로 브로드캐스트됩니다.")
     @ApiResponse(responseCode = "204", description = "No Content")
     @ApiResponse(responseCode = "403", description = "Forbidden",
             content = @Content(mediaType = "application/json",
