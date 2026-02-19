@@ -114,6 +114,7 @@ public class ChatRoomController implements ChatRoomApi {
     @GetMapping("/{roomId}/messages")
     @Override
     public ResponseEntity<ApiResult<MessageListResponse>> getMessages(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long roomId,
             @RequestParam(required = false) Long cursorId,
             @RequestParam(defaultValue = "20") Integer size
@@ -121,7 +122,7 @@ public class ChatRoomController implements ChatRoomApi {
         validateSize(size);
         validateCursorId(cursorId);
 
-        MessageListResponse response = messageService.getMessages(roomId, cursorId, size);
+        MessageListResponse response = messageService.getMessages(roomId, userDetails.getId(), cursorId, size);
         return ResponseEntity.ok(ApiResult.ok(response));
     }
 
