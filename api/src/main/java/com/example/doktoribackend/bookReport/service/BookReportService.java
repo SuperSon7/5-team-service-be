@@ -9,6 +9,7 @@ import com.example.doktoribackend.bookReport.dto.BookReportCreateResponse;
 import com.example.doktoribackend.bookReport.dto.BookReportDetailResponse;
 import com.example.doktoribackend.bookReport.dto.BookReportManagementResponse;
 import com.example.doktoribackend.bookReport.dto.BookReportProjection;
+import com.example.doktoribackend.bookReport.dto.MemberBookReportDetailResponse;
 import com.example.doktoribackend.bookReport.repository.BookReportRepository;
 import com.example.doktoribackend.book.domain.Book;
 import com.example.doktoribackend.common.error.ErrorCode;
@@ -262,5 +263,65 @@ public class BookReportService {
         return meetingRoundRepository.findByMeetingIdAndRoundNo(
                 meetingRound.getMeeting().getId(), roundNo - 1
         ).orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public MemberBookReportDetailResponse getMemberBookReport(Long userId, Long roundId, Long bookReportId) {
+        // 1. 회차 조회 (모임, 책 정보 포함)
+        MeetingRound meetingRound = meetingRoundRepository.findByIdWithBookAndMeeting(roundId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROUND_NOT_FOUND));
+
+        Meeting meeting = meetingRound.getMeeting();
+        Long meetingId = meeting.getId();
+
+        // 2. 권한 체크 (모임장만 조회 가능)
+        if (!meeting.isLeader(userId)) {
+            throw new BusinessException(ErrorCode.BOOK_REPORT_MANAGEMENT_FORBIDDEN);
+        }
+
+        // 3. 독후감 조회
+        BookReport bookReport = bookReportRepository.findById(bookReportId)
+                .filter(br -> br.getDeletedAt() == null)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOK_REPORT_NOT_FOUND));
+
+        // 4. 독후감이 해당 회차에 속하는지 확인
+        if (!bookReport.getMeetingRound().getId().equals(roundId)) {
+            throw new BusinessException(ErrorCode.BOOK_REPORT_NOT_FOUND);
+        }
+
+        // 5. 작성자의 MeetingMember 정보 조회
+        Long writerUserId = bookReport.getUser().getId();
+        MeetingMember writerMember = meetingMemberRepository.findByMeetingIdAndUserId(meetingId, writerUserId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BOOK_REPORT_NOT_FOUND));
+
+        // 6. 책 정보
+        Book book = meetingRound.getBook();
+        MemberBookReportDetailResponse.BookInfo bookInfo = MemberBookReportDetailResponse.BookInfo.builder()
+                .title(book.getTitle())
+                .authors(book.getAuthors())
+                .publisher(book.getPublisher())
+                .thumbnailUrl(book.getThumbnailUrl())
+                .publishedAt(book.getPublishedAt())
+                .build();
+
+        // 7. 작성자 정보
+        MemberBookReportDetailResponse.WriterInfo writerInfo = MemberBookReportDetailResponse.WriterInfo.builder()
+                .meetingMemberId(writerMember.getId())
+                .nickname(bookReport.getUser().getNickname())
+                .build();
+
+        // 8. 독후감 정보
+        MemberBookReportDetailResponse.BookReportInfo bookReportInfo = MemberBookReportDetailResponse.BookReportInfo.builder()
+                .id(bookReport.getId())
+                .status(bookReport.getStatus().name())
+                .content(bookReport.getContent())
+                .rejectionReason(bookReport.getRejectionReason())
+                .build();
+
+        return MemberBookReportDetailResponse.builder()
+                .book(bookInfo)
+                .writer(writerInfo)
+                .bookReport(bookReportInfo)
+                .build();
     }
 }
