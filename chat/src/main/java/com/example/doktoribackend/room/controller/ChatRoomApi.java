@@ -548,13 +548,22 @@ public interface ChatRoomApi {
                     }))
     @ApiResponse(responseCode = "409", description = "Conflict",
             content = @Content(mediaType = "application/json",
-                    examples = @ExampleObject(name = "채팅 중이 아닌 채팅방",
-                            value = """
-                                    {
-                                      "code": "CHAT_ROOM_NOT_CHATTING",
-                                      "message": "채팅 중인 채팅방이 아닙니다."
-                                    }
-                                    """)))
+                    examples = {
+                            @ExampleObject(name = "채팅 중이 아닌 채팅방",
+                                    value = """
+                                            {
+                                              "code": "CHAT_ROOM_NOT_CHATTING",
+                                              "message": "채팅 중인 채팅방이 아닙니다."
+                                            }
+                                            """),
+                            @ExampleObject(name = "마지막 라운드가 아님",
+                                    value = """
+                                            {
+                                              "code": "CHAT_ROOM_NOT_LAST_ROUND",
+                                              "message": "마지막 라운드에서만 채팅을 종료할 수 있습니다."
+                                            }
+                                            """)
+                    }))
     ResponseEntity<Void> endChatRoom(
             @Parameter(hidden = true) CustomUserDetails userDetails,
             @Parameter(description = "채팅방 ID", example = "1") Long roomId);
