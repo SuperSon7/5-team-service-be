@@ -1314,7 +1314,7 @@ class ChatRoomServiceTest {
             ChattingRoom room = createChattingRoom();
             ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE, MemberStatus.JOINED);
             ChattingRoomMember participant = createMember(room, 2L, MemberRole.PARTICIPANT, Position.DISAGREE, MemberStatus.JOINED);
-            RoomRound activeRound = RoomRound.builder().chattingRoom(room).roundNumber(2).build();
+            RoomRound activeRound = RoomRound.builder().chattingRoom(room).roundNumber(3).build();
 
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
@@ -1376,6 +1376,27 @@ class ChatRoomServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ErrorCode.CHAT_ROOM_MEMBER_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("마지막 라운드가 아니면 CHAT_ROOM_NOT_LAST_ROUND 예외가 발생한다")
+        void endChatRoom_notLastRound() {
+            // given
+            ChattingRoom room = createChattingRoom();
+            ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE, MemberStatus.JOINED);
+            RoomRound activeRound = RoomRound.builder().chattingRoom(room).roundNumber(2).build();
+
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.of(host));
+            given(roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(ROOM_ID))
+                    .willReturn(Optional.of(activeRound));
+
+            // when & then
+            assertThatThrownBy(() -> chatRoomService.endChatRoom(ROOM_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.CHAT_ROOM_NOT_LAST_ROUND);
         }
 
         @Test

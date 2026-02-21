@@ -810,4 +810,136 @@ class ChatRoomControllerTest {
                     .andExpect(status().isBadRequest());
         }
     }
+
+    @Nested
+    @DisplayName("채팅방 종료")
+    class EndChatRoom {
+
+        @Test
+        @DisplayName("방장이 종료하면 204 No Content를 반환한다")
+        void endChatRoom_success() throws Exception {
+            willDoNothing().given(chatRoomService).endChatRoom(10L, USER_ID);
+
+            mockMvc.perform(delete("/chat-rooms/10")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isNoContent());
+
+            then(chatRoomService).should().endChatRoom(10L, USER_ID);
+        }
+
+        @Test
+        @DisplayName("방장이 아니면 403을 반환한다")
+        void endChatRoom_notHost() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_NOT_HOST))
+                    .given(chatRoomService).endChatRoom(10L, USER_ID);
+
+            mockMvc.perform(delete("/chat-rooms/10")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("채팅방이 없으면 404를 반환한다")
+        void endChatRoom_roomNotFound() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND))
+                    .given(chatRoomService).endChatRoom(999L, USER_ID);
+
+            mockMvc.perform(delete("/chat-rooms/999")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("채팅 중이 아니면 409를 반환한다")
+        void endChatRoom_notChatting() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_NOT_CHATTING))
+                    .given(chatRoomService).endChatRoom(10L, USER_ID);
+
+            mockMvc.perform(delete("/chat-rooms/10")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("마지막 라운드가 아니면 409를 반환한다")
+        void endChatRoom_notLastRound() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_NOT_LAST_ROUND))
+                    .given(chatRoomService).endChatRoom(10L, USER_ID);
+
+            mockMvc.perform(delete("/chat-rooms/10")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isConflict());
+        }
+    }
+
+    @Nested
+    @DisplayName("다음 라운드 전환")
+    class NextRound {
+
+        @Test
+        @DisplayName("방장이 전환하면 204 No Content를 반환한다")
+        void nextRound_success() throws Exception {
+            willDoNothing().given(chatRoomService).nextRound(10L, USER_ID);
+
+            mockMvc.perform(patch("/chat-rooms/10/next-round")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isNoContent());
+
+            then(chatRoomService).should().nextRound(10L, USER_ID);
+        }
+
+        @Test
+        @DisplayName("방장이 아니면 403을 반환한다")
+        void nextRound_notHost() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_NOT_HOST))
+                    .given(chatRoomService).nextRound(10L, USER_ID);
+
+            mockMvc.perform(patch("/chat-rooms/10/next-round")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("채팅방이 없으면 404를 반환한다")
+        void nextRound_roomNotFound() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND))
+                    .given(chatRoomService).nextRound(999L, USER_ID);
+
+            mockMvc.perform(patch("/chat-rooms/999/next-round")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("채팅 중이 아니면 409를 반환한다")
+        void nextRound_notChatting() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_NOT_CHATTING))
+                    .given(chatRoomService).nextRound(10L, USER_ID);
+
+            mockMvc.perform(patch("/chat-rooms/10/next-round")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("최대 라운드에 도달하면 409를 반환한다")
+        void nextRound_maxRoundReached() throws Exception {
+            willThrow(new BusinessException(ErrorCode.CHAT_ROOM_MAX_ROUND_REACHED))
+                    .given(chatRoomService).nextRound(10L, USER_ID);
+
+            mockMvc.perform(patch("/chat-rooms/10/next-round")
+                            .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                            .with(csrf()))
+                    .andExpect(status().isConflict());
+        }
+    }
 }
