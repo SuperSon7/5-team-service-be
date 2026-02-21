@@ -1284,4 +1284,173 @@ class ChatRoomServiceTest {
                     .isEqualTo(ErrorCode.CHAT_ROOM_MAX_ROUND_REACHED);
         }
     }
+
+    @Nested
+    @DisplayName("채팅방 종료")
+    class EndChatRoom {
+
+        private ChattingRoom createChattingRoom() {
+            ChattingRoom room = ChattingRoom.builder()
+                    .topic("주제").description("설명").capacity(4).build();
+            ReflectionTestUtils.setField(room, "id", ROOM_ID);
+            ReflectionTestUtils.setField(room, "status", RoomStatus.CHATTING);
+            return room;
+        }
+
+        private ChattingRoomMember createMember(ChattingRoom room, Long userId,
+                                                 MemberRole role, Position position, MemberStatus status) {
+            ChattingRoomMember member = ChattingRoomMember.builder()
+                    .chattingRoom(room).userId(userId).nickname("닉네임")
+                    .profileImageUrl("http://profile.url")
+                    .role(role).position(position).build();
+            ReflectionTestUtils.setField(member, "status", status);
+            return member;
+        }
+
+        @Test
+        @DisplayName("HOST가 종료하면 방 ENDED, 활성 멤버 LEFT, 활성 라운드 종료된다")
+        void endChatRoom_success() {
+            // given
+            ChattingRoom room = createChattingRoom();
+            ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE, MemberStatus.JOINED);
+            ChattingRoomMember participant = createMember(room, 2L, MemberRole.PARTICIPANT, Position.DISAGREE, MemberStatus.JOINED);
+            RoomRound activeRound = RoomRound.builder().chattingRoom(room).roundNumber(2).build();
+
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.of(host));
+            given(roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(ROOM_ID))
+                    .willReturn(Optional.of(activeRound));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndStatusIn(eq(ROOM_ID), any()))
+                    .willReturn(List.of(host, participant));
+
+            // when
+            chatRoomService.endChatRoom(ROOM_ID, USER_ID);
+
+            // then
+            assertThat(room.getStatus()).isEqualTo(RoomStatus.ENDED);
+            assertThat(activeRound.getEndedAt()).isNotNull();
+            assertThat(host.getStatus()).isEqualTo(MemberStatus.LEFT);
+            assertThat(participant.getStatus()).isEqualTo(MemberStatus.LEFT);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 채팅방이면 CHAT_ROOM_NOT_FOUND 예외가 발생한다")
+        void endChatRoom_roomNotFound() {
+            // given
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> chatRoomService.endChatRoom(ROOM_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.CHAT_ROOM_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("CHATTING 상태가 아니면 CHAT_ROOM_NOT_CHATTING 예외가 발생한다")
+        void endChatRoom_notChatting() {
+            // given
+            ChattingRoom room = createChattingRoom();
+            ReflectionTestUtils.setField(room, "status", RoomStatus.WAITING);
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+
+            // when & then
+            assertThatThrownBy(() -> chatRoomService.endChatRoom(ROOM_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.CHAT_ROOM_NOT_CHATTING);
+        }
+
+        @Test
+        @DisplayName("멤버가 아니면 CHAT_ROOM_MEMBER_NOT_FOUND 예외가 발생한다")
+        void endChatRoom_memberNotFound() {
+            // given
+            ChattingRoom room = createChattingRoom();
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> chatRoomService.endChatRoom(ROOM_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.CHAT_ROOM_MEMBER_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("HOST가 아니면 CHAT_ROOM_NOT_HOST 예외가 발생한다")
+        void endChatRoom_notHost() {
+            // given
+            ChattingRoom room = createChattingRoom();
+            ChattingRoomMember participant = createMember(room, USER_ID, MemberRole.PARTICIPANT, Position.AGREE, MemberStatus.JOINED);
+
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.of(participant));
+
+            // when & then
+            assertThatThrownBy(() -> chatRoomService.endChatRoom(ROOM_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.CHAT_ROOM_NOT_HOST);
+        }
+    }
+
+    @Nested
+    @DisplayName("만료 채팅방 자동 종료")
+    class EndExpiredChatRooms {
+
+        private ChattingRoom createChattingRoom(Long id, int duration) {
+            ChattingRoom room = ChattingRoom.builder()
+                    .topic("주제").description("설명").capacity(4).duration(duration).build();
+            ReflectionTestUtils.setField(room, "id", id);
+            ReflectionTestUtils.setField(room, "status", RoomStatus.CHATTING);
+            return room;
+        }
+
+        @Test
+        @DisplayName("duration이 지난 채팅방은 자동 종료된다")
+        void endExpiredChatRooms_endsExpired() {
+            // given
+            ChattingRoom expiredRoom = createChattingRoom(1L, 30);
+            RoomRound firstRound = RoomRound.builder().chattingRoom(expiredRoom).roundNumber(1).build();
+            ReflectionTestUtils.setField(firstRound, "startedAt", java.time.LocalDateTime.now().minusMinutes(31));
+
+            given(chattingRoomRepository.findByStatus(RoomStatus.CHATTING))
+                    .willReturn(List.of(expiredRoom));
+            given(roomRoundRepository.findByChattingRoomIdAndRoundNumber(1L, 1))
+                    .willReturn(Optional.of(firstRound));
+            given(roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(1L))
+                    .willReturn(Optional.empty());
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndStatusIn(eq(1L), any()))
+                    .willReturn(Collections.emptyList());
+
+            // when
+            chatRoomService.endExpiredChatRooms();
+
+            // then
+            assertThat(expiredRoom.getStatus()).isEqualTo(RoomStatus.ENDED);
+        }
+
+        @Test
+        @DisplayName("duration이 지나지 않은 채팅방은 종료되지 않는다")
+        void endExpiredChatRooms_skipsActive() {
+            // given
+            ChattingRoom activeRoom = createChattingRoom(2L, 30);
+            RoomRound firstRound = RoomRound.builder().chattingRoom(activeRoom).roundNumber(1).build();
+            ReflectionTestUtils.setField(firstRound, "startedAt", java.time.LocalDateTime.now().minusMinutes(10));
+
+            given(chattingRoomRepository.findByStatus(RoomStatus.CHATTING))
+                    .willReturn(List.of(activeRoom));
+            given(roomRoundRepository.findByChattingRoomIdAndRoundNumber(2L, 1))
+                    .willReturn(Optional.of(firstRound));
+
+            // when
+            chatRoomService.endExpiredChatRooms();
+
+            // then
+            assertThat(activeRoom.getStatus()).isEqualTo(RoomStatus.CHATTING);
+        }
+    }
 }
