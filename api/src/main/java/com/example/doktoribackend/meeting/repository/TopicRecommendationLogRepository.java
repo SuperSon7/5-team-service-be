@@ -12,10 +12,10 @@ public interface TopicRecommendationLogRepository extends JpaRepository<TopicRec
     @Query("SELECT COUNT(l) FROM TopicRecommendationLog l " +
             "WHERE l.meeting.id = :meetingId " +
             "AND l.createdAt >= :startOfDay " +
-            "AND l.createdAt < :endOfDay")
+            "AND l.createdAt < :nextDayStart")
     int countTodayByMeetingId(
             @Param("meetingId") Long meetingId,
             @Param("startOfDay") LocalDateTime startOfDay,
-            @Param("endOfDay") LocalDateTime endOfDay
+            @Param("nextDayStart") LocalDateTime nextDayStart
     );
 }
