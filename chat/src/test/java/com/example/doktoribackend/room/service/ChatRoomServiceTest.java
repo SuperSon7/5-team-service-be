@@ -1438,13 +1438,9 @@ class ChatRoomServiceTest {
         void endExpiredChatRooms_endsExpired() {
             // given
             ChattingRoom expiredRoom = createChattingRoom(1L, 30);
-            RoomRound firstRound = RoomRound.builder().chattingRoom(expiredRoom).roundNumber(1).build();
-            ReflectionTestUtils.setField(firstRound, "startedAt", java.time.LocalDateTime.now().minusMinutes(31));
 
-            given(chattingRoomRepository.findByStatus(RoomStatus.CHATTING))
+            given(chattingRoomRepository.findExpiredChattingRooms(any(java.time.LocalDateTime.class)))
                     .willReturn(List.of(expiredRoom));
-            given(roomRoundRepository.findByChattingRoomIdAndRoundNumber(1L, 1))
-                    .willReturn(Optional.of(firstRound));
             given(roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(1L))
                     .willReturn(Optional.empty());
             given(chattingRoomMemberRepository.findByChattingRoomIdAndStatusIn(eq(1L), any()))
@@ -1461,20 +1457,14 @@ class ChatRoomServiceTest {
         @DisplayName("duration이 지나지 않은 채팅방은 종료되지 않는다")
         void endExpiredChatRooms_skipsActive() {
             // given
-            ChattingRoom activeRoom = createChattingRoom(2L, 30);
-            RoomRound firstRound = RoomRound.builder().chattingRoom(activeRoom).roundNumber(1).build();
-            ReflectionTestUtils.setField(firstRound, "startedAt", java.time.LocalDateTime.now().minusMinutes(10));
-
-            given(chattingRoomRepository.findByStatus(RoomStatus.CHATTING))
-                    .willReturn(List.of(activeRoom));
-            given(roomRoundRepository.findByChattingRoomIdAndRoundNumber(2L, 1))
-                    .willReturn(Optional.of(firstRound));
+            given(chattingRoomRepository.findExpiredChattingRooms(any(java.time.LocalDateTime.class)))
+                    .willReturn(Collections.emptyList());
 
             // when
             chatRoomService.endExpiredChatRooms();
 
             // then
-            assertThat(activeRoom.getStatus()).isEqualTo(RoomStatus.CHATTING);
+            then(chattingRoomRepository).should(never()).findById(any());
         }
     }
 }
