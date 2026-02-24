@@ -1,6 +1,5 @@
 package com.example.doktoribackend.scheduler;
 
-import com.example.doktoribackend.meeting.domain.Meeting;
 import com.example.doktoribackend.meeting.domain.MeetingRound;
 import com.example.doktoribackend.meeting.domain.MeetingRoundStatus;
 import com.example.doktoribackend.meeting.repository.MeetingRepository;
@@ -33,18 +32,7 @@ public class MeetingScheduler {
     public void updateExpiredRecruitmentStatus() {
         LocalDate today = LocalDate.now();
 
-        List<Meeting> expiredMeetings = meetingRepository.findExpiredRecruitingMeetings(today);
-
-        if (expiredMeetings.isEmpty()) {
-            log.info("모집 마감일이 지난 모임이 없습니다.");
-            return;
-        }
-
-        int updatedCount = 0;
-        for (Meeting meeting : expiredMeetings) {
-            meeting.updateStatusToFinished();
-            updatedCount++;
-        }
+        int updatedCount = meetingRepository.bulkUpdateExpiredToFinished(today);
 
         log.info("모집 마감일이 지난 {} 개의 모임 상태를 FINISHED로 업데이트했습니다.", updatedCount);
     }
