@@ -192,4 +192,8 @@ public class Meeting extends BaseTimeEntity {
         this.dayOfWeek = dayOfWeek;
         this.firstRoundAt = firstRoundAt;
     }
+
+    public void changeLeader(User newLeader) {
+        this.leaderUser = newLeader;
+    }
 }

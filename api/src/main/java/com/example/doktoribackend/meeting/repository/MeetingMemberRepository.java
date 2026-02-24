@@ -27,4 +27,13 @@ public interface MeetingMemberRepository extends JpaRepository<MeetingMember, Lo
            "ORDER BY mm.createdAt ASC")
     List<MeetingMember> findApprovedMembersByMeetingIdOrderByCreatedAt(@Param("meetingId") Long meetingId);
 
+    @Query("SELECT mm FROM MeetingMember mm " +
+           "JOIN FETCH mm.user " +
+           "WHERE mm.id = :memberId " +
+           "AND mm.meeting.id = :meetingId")
+    Optional<MeetingMember> findByIdAndMeetingIdWithUser(
+            @Param("memberId") Long memberId,
+            @Param("meetingId") Long meetingId
+    );
+
 }
