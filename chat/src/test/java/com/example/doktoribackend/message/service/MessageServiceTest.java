@@ -637,6 +637,60 @@ class MessageServiceTest {
         }
 
         @Test
+        @DisplayName("WAITING 상태 멤버면 메시지 조회 시 CHAT_ROOM_MEMBER_NOT_FOUND 예외가 발생한다")
+        void getMessages_waitingMember() {
+            // given
+            given(chattingRoomRepository.findById(ROOM_ID))
+                    .willReturn(Optional.of(createRoomWithStatus(RoomStatus.CHATTING)));
+            ChattingRoomMember waitingMember = createRoomMember(SENDER_ID, SENDER_NICKNAME);
+            ReflectionTestUtils.setField(waitingMember, "status", MemberStatus.WAITING);
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, SENDER_ID))
+                    .willReturn(Optional.of(waitingMember));
+
+            // when & then
+            assertThatThrownBy(() -> messageService.getMessages(ROOM_ID, SENDER_ID, null, 20))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.CHAT_ROOM_MEMBER_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("DISCONNECTED 상태 멤버면 메시지 조회 시 CHAT_ROOM_MEMBER_NOT_FOUND 예외가 발생한다")
+        void getMessages_disconnectedMember() {
+            // given
+            given(chattingRoomRepository.findById(ROOM_ID))
+                    .willReturn(Optional.of(createRoomWithStatus(RoomStatus.CHATTING)));
+            ChattingRoomMember disconnectedMember = createRoomMember(SENDER_ID, SENDER_NICKNAME);
+            ReflectionTestUtils.setField(disconnectedMember, "status", MemberStatus.DISCONNECTED);
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, SENDER_ID))
+                    .willReturn(Optional.of(disconnectedMember));
+
+            // when & then
+            assertThatThrownBy(() -> messageService.getMessages(ROOM_ID, SENDER_ID, null, 20))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.CHAT_ROOM_MEMBER_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("LEFT 상태 멤버면 메시지 조회 시 CHAT_ROOM_MEMBER_NOT_FOUND 예외가 발생한다")
+        void getMessages_leftMember() {
+            // given
+            given(chattingRoomRepository.findById(ROOM_ID))
+                    .willReturn(Optional.of(createRoomWithStatus(RoomStatus.CHATTING)));
+            ChattingRoomMember leftMember = createRoomMember(SENDER_ID, SENDER_NICKNAME);
+            ReflectionTestUtils.setField(leftMember, "status", MemberStatus.LEFT);
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, SENDER_ID))
+                    .willReturn(Optional.of(leftMember));
+
+            // when & then
+            assertThatThrownBy(() -> messageService.getMessages(ROOM_ID, SENDER_ID, null, 20))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.CHAT_ROOM_MEMBER_NOT_FOUND);
+        }
+
+        @Test
         @DisplayName("닉네임을 찾을 수 없는 발신자는 '알 수 없음'으로 표시된다")
         void getMessages_unknownSender() {
             // given

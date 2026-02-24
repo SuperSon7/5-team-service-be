@@ -44,8 +44,12 @@ public class MessageService {
         chattingRoomRepository.findById(roomId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
-        chattingRoomMemberRepository.findByChattingRoomIdAndUserId(roomId, userId)
+        ChattingRoomMember member = chattingRoomMemberRepository.findByChattingRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_MEMBER_NOT_FOUND));
+
+        if (member.getStatus() != MemberStatus.JOINED) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_MEMBER_NOT_FOUND);
+        }
 
         List<Message> messages = messageRepository.findByRoomIdWithCursor(
                 roomId, cursorId, PageRequest.of(0, size + 1));
