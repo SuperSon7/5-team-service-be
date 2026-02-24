@@ -1,10 +1,10 @@
 package com.example.doktoribackend.meeting.repository;
 
 import com.example.doktoribackend.meeting.domain.Meeting;
-import com.example.doktoribackend.meeting.domain.MeetingStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -25,12 +25,6 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long>, Meeting
     Optional<Meeting> findByIdWithLock(@Param("meetingId") Long meetingId);
 
     @Query("SELECT m FROM Meeting m " +
-            "WHERE m.status = 'RECRUITING' " +
-            "AND m.recruitmentDeadline < :today " +
-            "AND m.deletedAt IS NULL")
-    List<Meeting> findExpiredRecruitingMeetings(@Param("today") LocalDate today);
-
-    @Query("SELECT m FROM Meeting m " +
             "WHERE m.id IN :meetingIds " +
             "AND m.status = 'FINISHED' " +
             "AND m.deletedAt IS NULL " +
@@ -42,4 +36,11 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long>, Meeting
     List<Meeting> findCompletedMeetingsInIds(
             @Param("meetingIds") List<Long> meetingIds,
             @Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query("UPDATE Meeting m SET m.status = 'FINISHED' " +
+            "WHERE m.status = 'RECRUITING' " +
+            "AND m.recruitmentDeadline < :today " +
+            "AND m.deletedAt IS NULL")
+    int bulkUpdateExpiredToFinished(@Param("today") LocalDate today);
 }
