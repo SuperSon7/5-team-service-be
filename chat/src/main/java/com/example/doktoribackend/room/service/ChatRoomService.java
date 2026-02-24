@@ -290,13 +290,9 @@ public class ChatRoomService {
 
     @Transactional
     public void endExpiredChatRooms() {
-        List<ChattingRoom> chattingRooms = chattingRoomRepository.findByStatus(RoomStatus.CHATTING);
-        LocalDateTime now = LocalDateTime.now();
-
-        for (ChattingRoom room : chattingRooms) {
-            roomRoundRepository.findByChattingRoomIdAndRoundNumber(room.getId(), 1)
-                    .filter(firstRound -> firstRound.getStartedAt().plusMinutes(room.getDuration()).isBefore(now))
-                    .ifPresent(firstRound -> endRoom(room));
+        List<ChattingRoom> expiredRooms = chattingRoomRepository.findExpiredChattingRooms(LocalDateTime.now());
+        for (ChattingRoom room : expiredRooms) {
+            endRoom(room);
         }
     }
 
