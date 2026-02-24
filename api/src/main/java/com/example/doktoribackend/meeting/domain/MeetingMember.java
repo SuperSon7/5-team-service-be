@@ -90,4 +90,20 @@ public class MeetingMember extends BaseTimeEntity {
         this.status = MeetingMemberStatus.REJECTED;
         this.rejectedAt = rejectedAt;
     }
+
+    public boolean isLeader() {
+        return this.role == MeetingMemberRole.LEADER;
+    }
+
+    public boolean isApproved() {
+        return this.status == MeetingMemberStatus.APPROVED;
+    }
+
+    public void promoteToLeader() {
+        this.role = MeetingMemberRole.LEADER;
+    }
+
+    public void demoteToMember() {
+        this.role = MeetingMemberRole.MEMBER;
+    }
 }
