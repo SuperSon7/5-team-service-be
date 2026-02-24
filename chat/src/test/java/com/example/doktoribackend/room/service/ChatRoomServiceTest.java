@@ -495,6 +495,7 @@ class ChatRoomServiceTest {
 
             // then
             assertThat(room.getStatus()).isEqualTo(RoomStatus.CANCELLED);
+            assertThat(room.getCurrentMemberCount()).isZero();
             assertThat(host.getStatus()).isEqualTo(MemberStatus.LEFT);
             assertThat(member1.getStatus()).isEqualTo(MemberStatus.LEFT);
             assertThat(member2.getStatus()).isEqualTo(MemberStatus.LEFT);
