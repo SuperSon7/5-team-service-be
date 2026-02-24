@@ -40,6 +40,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
@@ -90,6 +92,9 @@ class ChatRoomServiceTest {
     @Mock
     private com.example.doktoribackend.config.WebSocketSessionRegistry sessionRegistry;
 
+    @Mock
+    private PlatformTransactionManager transactionManager;
+
     @InjectMocks
     private ChatRoomService chatRoomService;
 
@@ -100,6 +105,8 @@ class ChatRoomServiceTest {
     @BeforeEach
     void setUp() {
         TransactionSynchronizationManager.initSynchronization();
+        lenient().when(transactionManager.getTransaction(any()))
+                .thenReturn(mock(TransactionStatus.class));
     }
 
     @AfterEach
@@ -145,6 +152,7 @@ class ChatRoomServiceTest {
             // given
             ChatRoomCreateRequest request = createValidRequest(4);
             given(bookRepository.findByIsbn(TEST_ISBN)).willReturn(Optional.of(createTestBook()));
+            given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
                     eq(USER_ID), any())).willReturn(false);
             given(chattingRoomRepository.save(any(ChattingRoom.class)))
@@ -166,6 +174,7 @@ class ChatRoomServiceTest {
             // given
             ChatRoomCreateRequest request = createValidRequest(4);
             given(bookRepository.findByIsbn(TEST_ISBN)).willReturn(Optional.of(createTestBook()));
+            given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
                     eq(USER_ID), any())).willReturn(false);
             stubUserInfo();
@@ -191,6 +200,7 @@ class ChatRoomServiceTest {
             // given
             ChatRoomCreateRequest request = createValidRequest(4);
             given(bookRepository.findByIsbn(TEST_ISBN)).willReturn(Optional.of(createTestBook()));
+            given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
                     eq(USER_ID), any())).willReturn(false);
             given(chattingRoomRepository.save(any(ChattingRoom.class)))
@@ -223,6 +233,7 @@ class ChatRoomServiceTest {
             // given
             ChatRoomCreateRequest request = createValidRequest(capacity);
             given(bookRepository.findByIsbn(TEST_ISBN)).willReturn(Optional.of(createTestBook()));
+            given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
                     eq(USER_ID), any())).willReturn(false);
             given(chattingRoomRepository.save(any(ChattingRoom.class)))
@@ -262,6 +273,7 @@ class ChatRoomServiceTest {
         void alreadyJoined_throwsException() {
             // given
             ChatRoomCreateRequest request = createValidRequest(4);
+            given(bookRepository.findByIsbn(TEST_ISBN)).willReturn(Optional.of(createTestBook()));
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
                     USER_ID, List.of(MemberStatus.WAITING, MemberStatus.JOINED, MemberStatus.DISCONNECTED)))
                     .willReturn(true);
@@ -281,6 +293,7 @@ class ChatRoomServiceTest {
             // given
             ChatRoomCreateRequest request = createValidRequest(4);
             given(bookRepository.findByIsbn(TEST_ISBN)).willReturn(Optional.of(createTestBook()));
+            given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
                     eq(USER_ID), any())).willReturn(false);
             given(chattingRoomRepository.save(any(ChattingRoom.class)))
