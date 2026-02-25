@@ -6,7 +6,6 @@ import com.example.doktoribackend.common.client.KakaoBookClient;
 import com.example.doktoribackend.common.error.ErrorCode;
 import com.example.doktoribackend.common.s3.ImageUrlResolver;
 import com.example.doktoribackend.exception.BusinessException;
-import com.example.doktoribackend.quiz.domain.QuizChoice;
 import com.example.doktoribackend.room.domain.ChattingRoom;
 import com.example.doktoribackend.room.domain.ChattingRoomMember;
 import com.example.doktoribackend.room.domain.MemberRole;
@@ -15,7 +14,6 @@ import com.example.doktoribackend.room.domain.Position;
 import com.example.doktoribackend.room.domain.RoomRound;
 import com.example.doktoribackend.room.domain.RoomStatus;
 import com.example.doktoribackend.quiz.domain.Quiz;
-import com.example.doktoribackend.quiz.dto.QuizResponse;
 import com.example.doktoribackend.room.dto.ChatRoomCreateRequest;
 import com.example.doktoribackend.room.dto.ChatRoomCreateResponse;
 import com.example.doktoribackend.room.dto.ChatRoomJoinRequest;
@@ -27,6 +25,7 @@ import com.example.doktoribackend.room.repository.ChattingRoomRepository;
 import com.example.doktoribackend.room.repository.RoomRoundRepository;
 import com.example.doktoribackend.user.domain.UserInfo;
 import com.example.doktoribackend.user.repository.UserInfoRepository;
+import com.example.doktoribackend.vote.service.VoteService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -96,6 +95,9 @@ class ChatRoomServiceTest {
 
     @Mock
     private PlatformTransactionManager transactionManager;
+
+    @Mock
+    private VoteService voteService;
 
     @InjectMocks
     private ChatRoomService chatRoomService;
@@ -1316,12 +1318,12 @@ class ChatRoomServiceTest {
         }
 
         private ChattingRoomMember createMember(ChattingRoom room, Long userId,
-                                                 MemberRole role, Position position, MemberStatus status) {
+                                                 MemberRole role, Position position) {
             ChattingRoomMember member = ChattingRoomMember.builder()
                     .chattingRoom(room).userId(userId).nickname("닉네임")
                     .profileImageUrl("http://profile.url")
                     .role(role).position(position).build();
-            ReflectionTestUtils.setField(member, "status", status);
+            ReflectionTestUtils.setField(member, "status", MemberStatus.JOINED);
             return member;
         }
 
@@ -1330,8 +1332,8 @@ class ChatRoomServiceTest {
         void endChatRoom_success() {
             // given
             ChattingRoom room = createChattingRoom();
-            ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE, MemberStatus.JOINED);
-            ChattingRoomMember participant = createMember(room, 2L, MemberRole.PARTICIPANT, Position.DISAGREE, MemberStatus.JOINED);
+            ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE);
+            ChattingRoomMember participant = createMember(room, 2L, MemberRole.PARTICIPANT, Position.DISAGREE);
             RoomRound activeRound = RoomRound.builder().chattingRoom(room).roundNumber(3).build();
 
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
@@ -1401,7 +1403,7 @@ class ChatRoomServiceTest {
         void endChatRoom_notLastRound() {
             // given
             ChattingRoom room = createChattingRoom();
-            ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE, MemberStatus.JOINED);
+            ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE);
             RoomRound activeRound = RoomRound.builder().chattingRoom(room).roundNumber(2).build();
 
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
@@ -1422,7 +1424,7 @@ class ChatRoomServiceTest {
         void endChatRoom_notHost() {
             // given
             ChattingRoom room = createChattingRoom();
-            ChattingRoomMember participant = createMember(room, USER_ID, MemberRole.PARTICIPANT, Position.AGREE, MemberStatus.JOINED);
+            ChattingRoomMember participant = createMember(room, USER_ID, MemberRole.PARTICIPANT, Position.AGREE);
 
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
