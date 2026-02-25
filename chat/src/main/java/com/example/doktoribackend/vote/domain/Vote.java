@@ -33,6 +33,9 @@ public class Vote {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
+    @Column(name = "total_member_count", nullable = false, columnDefinition = "TINYINT UNSIGNED")
+    private Integer totalMemberCount;
+
     @Column(name = "agree_count", nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer agreeCount = 0;
 
@@ -42,14 +45,15 @@ public class Vote {
     @OneToMany(mappedBy = "vote", cascade = CascadeType.ALL)
     private final List<VoteCast> voteCasts = new ArrayList<>();
 
-    public static Vote create(ChattingRoom chattingRoom) {
-        return new Vote(chattingRoom);
+    public static Vote create(ChattingRoom chattingRoom, int totalMemberCount) {
+        return new Vote(chattingRoom, totalMemberCount);
     }
 
     @Builder
-    private Vote(ChattingRoom chattingRoom) {
+    private Vote(ChattingRoom chattingRoom, int totalMemberCount) {
         this.roomId = chattingRoom.getId();
         this.chattingRoom = chattingRoom;
+        this.totalMemberCount = totalMemberCount;
         this.openedAt = LocalDateTime.now();
     }
 
