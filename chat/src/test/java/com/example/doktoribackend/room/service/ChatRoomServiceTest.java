@@ -705,7 +705,7 @@ class ChatRoomServiceTest {
                     .willReturn(List.of(host, participant));
             given(chatRoomQueryService.toStartMemberItem(any())).willAnswer(invocation -> {
                 ChattingRoomMember m = invocation.getArgument(0);
-                return new ChatStartMemberItem(m.getNickname(), m.getProfileImageUrl());
+                return new ChatStartMemberItem(m.getUserId(), m.getNickname(), m.getProfileImageUrl());
             });
 
             // when
