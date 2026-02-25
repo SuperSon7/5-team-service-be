@@ -4,7 +4,6 @@ import com.example.doktoribackend.book.domain.Book;
 import com.example.doktoribackend.book.service.BookService;
 import com.example.doktoribackend.book.repository.BookRepository;
 import com.example.doktoribackend.common.error.ErrorCode;
-import com.example.doktoribackend.common.s3.ImageUrlResolver;
 import com.example.doktoribackend.config.WebSocketSessionRegistry;
 import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.vote.service.VoteService;
@@ -18,13 +17,9 @@ import com.example.doktoribackend.room.domain.RoomStatus;
 import com.example.doktoribackend.room.dto.ChatRoomCreateRequest;
 import com.example.doktoribackend.room.dto.ChatRoomCreateResponse;
 import com.example.doktoribackend.room.dto.ChatRoomJoinRequest;
-import com.example.doktoribackend.room.dto.ChatRoomListItem;
-import com.example.doktoribackend.room.dto.ChatRoomListResponse;
 import com.example.doktoribackend.room.dto.ChatRoomStartResponse;
-import com.example.doktoribackend.room.dto.NextRoundResponse;
 import com.example.doktoribackend.room.dto.ChatStartMemberItem;
-import com.example.doktoribackend.room.dto.PageInfo;
-import com.example.doktoribackend.room.dto.WaitingRoomMemberItem;
+import com.example.doktoribackend.room.dto.NextRoundResponse;
 import com.example.doktoribackend.room.dto.WaitingRoomResponse;
 import com.example.doktoribackend.room.repository.ChattingRoomMemberRepository;
 import com.example.doktoribackend.room.repository.ChattingRoomRepository;
@@ -32,7 +27,6 @@ import com.example.doktoribackend.room.repository.RoomRoundRepository;
 import com.example.doktoribackend.user.domain.UserInfo;
 import com.example.doktoribackend.user.repository.UserInfoRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,7 +48,6 @@ public class ChatRoomService {
     private final ChattingRoomMemberRepository chattingRoomMemberRepository;
     private final RoomRoundRepository roomRoundRepository;
     private final UserInfoRepository userInfoRepository;
-    private final ImageUrlResolver imageUrlResolver;
     private final WebSocketSessionRegistry sessionRegistry;
     private final PlatformTransactionManager transactionManager;
     private final VoteService voteService;
@@ -62,23 +55,7 @@ public class ChatRoomService {
     private final QuizService quizService;
     private final ChatRoomEventPublisher chatRoomEventPublisher;
     private final BookRepository bookRepository;
-
-    @Transactional(readOnly = true)
-    public ChatRoomListResponse getChatRooms(Long cursorId, int size) {
-        List<ChattingRoom> rooms = chattingRoomRepository.findByStatusWithCursor(
-                RoomStatus.WAITING, cursorId, PageRequest.of(0, size + 1));
-        boolean hasNext = rooms.size() > size;
-        List<ChattingRoom> content = hasNext ? rooms.subList(0, size) : rooms;
-
-        List<ChatRoomListItem> items = content.stream()
-                .map(ChatRoomListItem::from)
-                .toList();
-
-        Long nextCursorId = hasNext ? content.getLast().getId() : null;
-        PageInfo pageInfo = new PageInfo(nextCursorId, hasNext, size);
-
-        return new ChatRoomListResponse(items, pageInfo);
-    }
+    private final ChatRoomQueryService chatRoomQueryService;
 
     public ChatRoomCreateResponse createChatRoom(Long userId, ChatRoomCreateRequest request) {
         validateCapacity(request.capacity());
@@ -126,7 +103,7 @@ public class ChatRoomService {
             leaveAllActiveMembers(roomId);
             chatRoomEventPublisher.broadcastCancelled(roomId);
         } else {
-            WaitingRoomResponse response = buildWaitingRoomResponse(room);
+            WaitingRoomResponse response = chatRoomQueryService.buildWaitingRoomResponse(room);
             chatRoomEventPublisher.broadcastWaitingRoomUpdate(roomId, response);
         }
     }
@@ -153,7 +130,7 @@ public class ChatRoomService {
 
         room.increaseMemberCount();
 
-        WaitingRoomResponse response = buildWaitingRoomResponse(room);
+        WaitingRoomResponse response = chatRoomQueryService.buildWaitingRoomResponse(room);
         chatRoomEventPublisher.broadcastWaitingRoomUpdate(roomId, response);
         return response;
     }
@@ -195,11 +172,11 @@ public class ChatRoomService {
 
         List<ChatStartMemberItem> agreeMembers = activeMembers.stream()
                 .filter(m -> m.getPosition() == Position.AGREE)
-                .map(m -> ChatStartMemberItem.from(m, imageUrlResolver))
+                .map(chatRoomQueryService::toStartMemberItem)
                 .toList();
         List<ChatStartMemberItem> disagreeMembers = activeMembers.stream()
                 .filter(m -> m.getPosition() == Position.DISAGREE)
-                .map(m -> ChatStartMemberItem.from(m, imageUrlResolver))
+                .map(chatRoomQueryService::toStartMemberItem)
                 .toList();
 
         ChatRoomStartResponse response = new ChatRoomStartResponse(
@@ -210,42 +187,9 @@ public class ChatRoomService {
         return response;
     }
 
-    @Transactional(readOnly = true)
-    public WaitingRoomResponse getWaitingRoom(Long roomId, Long userId) {
-        ChattingRoom room = findRoom(roomId);
-
-        chattingRoomMemberRepository.findByChattingRoomIdAndUserId(roomId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_MEMBER_NOT_FOUND));
-
-        return buildWaitingRoomResponse(room);
-    }
-
-    @Transactional(readOnly = true)
-    public ChatRoomStartResponse getChatRoomDetail(Long roomId, Long userId) {
-        ChattingRoomAndMember context = findChattingRoomAndMember(roomId, userId);
-        ChattingRoom room = context.room();
-
-        List<ChattingRoomMember> activeMembers = findActiveMembers(roomId);
-
-        List<ChatStartMemberItem> agreeMembers = activeMembers.stream()
-                .filter(m -> m.getPosition() == Position.AGREE)
-                .map(m -> ChatStartMemberItem.from(m, imageUrlResolver))
-                .toList();
-        List<ChatStartMemberItem> disagreeMembers = activeMembers.stream()
-                .filter(m -> m.getPosition() == Position.DISAGREE)
-                .map(m -> ChatStartMemberItem.from(m, imageUrlResolver))
-                .toList();
-
-        RoomRound activeRound = roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(roomId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_ROUND_NOT_FOUND));
-
-        return new ChatRoomStartResponse(
-                room.getTopic(), agreeMembers, disagreeMembers, activeRound.getRoundNumber(), activeRound.getStartedAt());
-    }
-
     @Transactional
     public void nextRound(Long roomId, Long userId) {
-        ChattingRoomAndMember context = findChattingRoomAndMember(roomId, userId);
+        ChatRoomQueryService.ChattingRoomAndMember context = chatRoomQueryService.findChattingRoomAndMember(roomId, userId);
         ChattingRoom room = context.room();
         ChattingRoomMember requester = context.member();
 
@@ -270,7 +214,7 @@ public class ChatRoomService {
 
     @Transactional
     public void endChatRoom(Long roomId, Long userId) {
-        ChattingRoomAndMember context = findChattingRoomAndMember(roomId, userId);
+        ChatRoomQueryService.ChattingRoomAndMember context = chatRoomQueryService.findChattingRoomAndMember(roomId, userId);
         ChattingRoomMember requester = context.member();
 
         if (!requester.isHost()) {
@@ -329,20 +273,6 @@ public class ChatRoomService {
         return round;
     }
 
-    private record ChattingRoomAndMember(ChattingRoom room, ChattingRoomMember member) {}
-
-    private ChattingRoomAndMember findChattingRoomAndMember(Long roomId, Long userId) {
-        ChattingRoom room = findRoom(roomId);
-
-        if (room.getStatus() != RoomStatus.CHATTING) {
-            throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_CHATTING);
-        }
-
-        ChattingRoomMember member = chattingRoomMemberRepository.findByChattingRoomIdAndUserId(roomId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_MEMBER_NOT_FOUND));
-
-        return new ChattingRoomAndMember(room, member);
-    }
 
     private void validateRoomNotFull(ChattingRoom room) {
         if (room.getCurrentMemberCount() >= room.getCapacity()) {
@@ -357,23 +287,6 @@ public class ChatRoomService {
         if (positionCount >= maxPerPosition) {
             throw new BusinessException(ErrorCode.CHAT_ROOM_POSITION_FULL);
         }
-    }
-
-    WaitingRoomResponse buildWaitingRoomResponse(ChattingRoom room) {
-        List<ChattingRoomMember> activeMembers = chattingRoomMemberRepository
-                .findByChattingRoomIdAndStatusIn(room.getId(), ACTIVE_STATUSES);
-
-        int agreeCount = (int) activeMembers.stream()
-                .filter(m -> m.getPosition() == Position.AGREE).count();
-        int disagreeCount = (int) activeMembers.stream()
-                .filter(m -> m.getPosition() == Position.DISAGREE).count();
-        int maxPerPosition = room.getCapacity() / 2;
-
-        List<WaitingRoomMemberItem> members = activeMembers.stream()
-                .map(m -> WaitingRoomMemberItem.from(m, imageUrlResolver))
-                .toList();
-
-        return new WaitingRoomResponse(room.getId(), agreeCount, disagreeCount, maxPerPosition, members);
     }
 
     private void validateRoomNotEnded(ChattingRoom room) {

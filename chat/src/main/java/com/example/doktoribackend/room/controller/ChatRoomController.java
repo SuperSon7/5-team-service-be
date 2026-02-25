@@ -13,6 +13,7 @@ import com.example.doktoribackend.room.dto.WaitingRoomResponse;
 import com.example.doktoribackend.message.dto.MessageListResponse;
 import com.example.doktoribackend.message.service.MessageService;
 import com.example.doktoribackend.quiz.service.QuizService;
+import com.example.doktoribackend.room.service.ChatRoomQueryService;
 import com.example.doktoribackend.room.service.ChatRoomService;
 import com.example.doktoribackend.room.service.WaitingRoomSseService;
 import com.example.doktoribackend.security.CustomUserDetails;
@@ -41,6 +42,7 @@ public class ChatRoomController implements ChatRoomApi {
     private static final int MAX_SIZE = 20;
 
     private final ChatRoomService chatRoomService;
+    private final ChatRoomQueryService chatRoomQueryService;
     private final MessageService messageService;
     private final WaitingRoomSseService waitingRoomSseService;
     private final QuizService quizService;
@@ -54,7 +56,7 @@ public class ChatRoomController implements ChatRoomApi {
         validateSize(size);
         validateCursorId(cursorId);
 
-        ChatRoomListResponse response = chatRoomService.getChatRooms(cursorId, size);
+        ChatRoomListResponse response = chatRoomQueryService.getChatRooms(cursorId, size);
         return ResponseEntity.ok(ApiResult.ok(response));
     }
 
@@ -99,7 +101,7 @@ public class ChatRoomController implements ChatRoomApi {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long roomId
     ) {
-        WaitingRoomResponse response = chatRoomService.getWaitingRoom(
+        WaitingRoomResponse response = chatRoomQueryService.getWaitingRoom(
                 roomId, userDetails.getId());
         return ResponseEntity.ok(ApiResult.ok(response));
     }
@@ -110,7 +112,7 @@ public class ChatRoomController implements ChatRoomApi {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long roomId
     ) {
-        chatRoomService.getWaitingRoom(roomId, userDetails.getId());
+        chatRoomQueryService.getWaitingRoom(roomId, userDetails.getId());
         return waitingRoomSseService.subscribe(roomId);
     }
 
@@ -120,7 +122,7 @@ public class ChatRoomController implements ChatRoomApi {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long roomId
     ) {
-        ChatRoomStartResponse response = chatRoomService.getChatRoomDetail(roomId, userDetails.getId());
+        ChatRoomStartResponse response = chatRoomQueryService.getChatRoomDetail(roomId, userDetails.getId());
         return ResponseEntity.ok(ApiResult.ok(response));
     }
 
