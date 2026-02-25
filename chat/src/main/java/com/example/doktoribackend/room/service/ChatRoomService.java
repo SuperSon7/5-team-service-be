@@ -11,6 +11,7 @@ import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.vote.service.VoteService;
 import com.example.doktoribackend.quiz.domain.Quiz;
 import com.example.doktoribackend.quiz.domain.QuizChoice;
+import com.example.doktoribackend.quiz.repository.QuizRepository;
 import com.example.doktoribackend.room.domain.ChattingRoom;
 import com.example.doktoribackend.room.domain.ChattingRoomMember;
 import com.example.doktoribackend.room.domain.MemberStatus;
@@ -70,6 +71,7 @@ public class ChatRoomService {
     private final WebSocketSessionRegistry sessionRegistry;
     private final PlatformTransactionManager transactionManager;
     private final VoteService voteService;
+    private final QuizRepository quizRepository;
 
     @Transactional(readOnly = true)
     public ChatRoomListResponse getChatRooms(Long cursorId, int size) {
@@ -148,7 +150,7 @@ public class ChatRoomService {
         }
 
         validateNotAlreadyJoined(userId);
-        validateQuizAnswer(room, request.quizAnswer());
+        validateQuizAnswer(roomId, request.quizAnswer());
         validateRoomNotFull(room);
         validatePositionNotFull(roomId, room.getCapacity(), request.position());
 
@@ -236,10 +238,8 @@ public class ChatRoomService {
             throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_WAITING);
         }
 
-        Quiz quiz = room.getQuiz();
-        if (quiz == null) {
-            throw new BusinessException(ErrorCode.CHAT_ROOM_QUIZ_NOT_FOUND);
-        }
+        Quiz quiz = quizRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_QUIZ_NOT_FOUND));
 
         return QuizResponse.from(quiz);
     }
@@ -308,20 +308,24 @@ public class ChatRoomService {
             throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_LAST_ROUND);
         }
 
-        endRoom(context.room());
+        endRoom(context.room(), currentRound);
     }
 
     @Transactional
     public void endExpiredChatRooms() {
         List<ChattingRoom> expiredRooms = chattingRoomRepository.findExpiredChattingRooms(LocalDateTime.now());
         for (ChattingRoom room : expiredRooms) {
-            endRoom(room);
+            endRoom(room, null);
         }
     }
 
-    private void endRoom(ChattingRoom room) {
-        roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(room.getId())
-                .ifPresent(RoomRound::endRound);
+    private void endRoom(ChattingRoom room, RoomRound currentRound) {
+        if (currentRound != null) {
+            currentRound.endRound();
+        } else {
+            roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(room.getId())
+                    .ifPresent(RoomRound::endRound);
+        }
 
         int memberCount = room.getCurrentMemberCount();
         room.endChatting();
@@ -364,11 +368,9 @@ public class ChatRoomService {
         return new ChattingRoomAndMember(room, member);
     }
 
-    private void validateQuizAnswer(ChattingRoom room, Integer quizAnswer) {
-        Quiz quiz = room.getQuiz();
-        if (quiz == null) {
-            throw new BusinessException(ErrorCode.CHAT_ROOM_QUIZ_NOT_FOUND);
-        }
+    private void validateQuizAnswer(Long roomId, Integer quizAnswer) {
+        Quiz quiz = quizRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_QUIZ_NOT_FOUND));
         if (!quiz.isCorrect(quizAnswer)) {
             throw new BusinessException(ErrorCode.CHAT_ROOM_QUIZ_WRONG_ANSWER);
         }
@@ -487,6 +489,8 @@ public class ChatRoomService {
         for (ChatRoomCreateRequest.QuizChoiceRequest choiceRequest : quizRequest.choices()) {
             quiz.addChoice(QuizChoice.create(quiz, choiceRequest));
         }
+
+        quizRepository.save(quiz);
     }
 
     private Book resolveBook(String isbn) {

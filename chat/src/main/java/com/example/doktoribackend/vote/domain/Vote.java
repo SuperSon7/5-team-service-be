@@ -7,6 +7,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.domain.Persistable;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,11 +17,14 @@ import java.util.List;
 @Table(name = "votes")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Vote {
+public class Vote implements Persistable<Long> {
 
     @Id
     @Column(name = "room_id")
     private Long roomId;
+
+    @Transient
+    private boolean isNew = true;
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
@@ -71,5 +75,21 @@ public class Vote {
         } else {
             this.disagreeCount++;
         }
+    }
+
+    @Override
+    public Long getId() {
+        return roomId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostPersist
+    @PostLoad
+    void markNotNew() {
+        this.isNew = false;
     }
 }
