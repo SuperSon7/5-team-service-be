@@ -584,8 +584,8 @@ class ChatRoomControllerTest {
         void startChatRoom_success() throws Exception {
             ChatRoomStartResponse response = new ChatRoomStartResponse(
                     "토론 주제",
-                    List.of(new ChatStartMemberItem("독서왕", "https://example.com/profile.jpg")),
-                    List.of(new ChatStartMemberItem("책벌레", null)),
+                    List.of(new ChatStartMemberItem(1L, "독서왕", "https://example.com/profile.jpg")),
+                    List.of(new ChatStartMemberItem(2L, "책벌레", null)),
                     1,
                     LocalDateTime.of(2026, 2, 17, 14, 30, 0)
             );
@@ -672,8 +672,8 @@ class ChatRoomControllerTest {
         void getChatRoomDetail_success() throws Exception {
             ChatRoomStartResponse response = new ChatRoomStartResponse(
                     "토론 주제",
-                    List.of(new ChatStartMemberItem("독서왕", "https://example.com/profile.jpg")),
-                    List.of(new ChatStartMemberItem("책벌레", null)),
+                    List.of(new ChatStartMemberItem(1L, "독서왕", "https://example.com/profile.jpg")),
+                    List.of(new ChatStartMemberItem(2L, "책벌레", null)),
                     1,
                     LocalDateTime.of(2026, 2, 17, 14, 30, 0)
             );

@@ -5,6 +5,8 @@ import com.example.doktoribackend.room.repository.ChattingRoomMemberRepository;
 import com.example.doktoribackend.room.repository.ChattingRoomRepository;
 import com.example.doktoribackend.room.repository.RoomRoundRepository;
 import com.example.doktoribackend.message.repository.MessageRepository;
+import com.example.doktoribackend.vote.repository.VoteCastRepository;
+import com.example.doktoribackend.vote.repository.VoteRepository;
 import com.example.doktoribackend.security.jwt.JwtTokenProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
@@ -49,6 +51,12 @@ class ChatRoomIntegrationTest {
 
     @Autowired
     private MessageRepository messageRepository;
+
+    @Autowired
+    private VoteCastRepository voteCastRepository;
+
+    @Autowired
+    private VoteRepository voteRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -101,6 +109,8 @@ class ChatRoomIntegrationTest {
     @AfterEach
     void tearDown() {
         messageRepository.deleteAllInBatch();
+        voteCastRepository.deleteAllInBatch();
+        voteRepository.deleteAllInBatch();
         roomRoundRepository.deleteAllInBatch();
         chattingRoomMemberRepository.deleteAllInBatch();
         chattingRoomRepository.deleteAllInBatch();
