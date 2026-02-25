@@ -14,6 +14,7 @@ import com.example.doktoribackend.room.domain.Position;
 import com.example.doktoribackend.room.domain.RoomRound;
 import com.example.doktoribackend.room.domain.RoomStatus;
 import com.example.doktoribackend.quiz.domain.Quiz;
+import com.example.doktoribackend.quiz.repository.QuizRepository;
 import com.example.doktoribackend.room.dto.ChatRoomCreateRequest;
 import com.example.doktoribackend.room.dto.ChatRoomCreateResponse;
 import com.example.doktoribackend.room.dto.ChatRoomJoinRequest;
@@ -99,6 +100,9 @@ class ChatRoomServiceTest {
     @Mock
     private VoteService voteService;
 
+    @Mock
+    private QuizRepository quizRepository;
+
     @InjectMocks
     private ChatRoomService chatRoomService;
 
@@ -173,7 +177,7 @@ class ChatRoomServiceTest {
         }
 
         @Test
-        @DisplayName("생성된 방에 Quiz가 연결되고 QuizChoice 4개가 저장된다")
+        @DisplayName("생성된 방에 Quiz가 저장되고 QuizChoice 4개가 저장된다")
         void createChatRoom_quizCreated() {
             // given
             ChatRoomCreateRequest request = createValidRequest(4);
@@ -181,21 +185,23 @@ class ChatRoomServiceTest {
             given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
                     eq(USER_ID), any())).willReturn(false);
+            given(chattingRoomRepository.save(any(ChattingRoom.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
             stubUserInfo();
 
-            ArgumentCaptor<ChattingRoom> roomCaptor = ArgumentCaptor.forClass(ChattingRoom.class);
-            given(chattingRoomRepository.save(roomCaptor.capture()))
+            ArgumentCaptor<Quiz> quizCaptor = ArgumentCaptor.forClass(Quiz.class);
+            given(quizRepository.save(quizCaptor.capture()))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
             // when
             chatRoomService.createChatRoom(USER_ID, request);
 
             // then
-            ChattingRoom savedRoom = roomCaptor.getValue();
-            assertThat(savedRoom.getQuiz()).isNotNull();
-            assertThat(savedRoom.getQuiz().getQuestion()).isEqualTo("퀴즈 질문입니다");
-            assertThat(savedRoom.getQuiz().getCorrectChoiceNumber()).isEqualTo(1);
-            assertThat(savedRoom.getQuiz().getChoices()).hasSize(4);
+            Quiz savedQuiz = quizCaptor.getValue();
+            assertThat(savedQuiz).isNotNull();
+            assertThat(savedQuiz.getQuestion()).isEqualTo("퀴즈 질문입니다");
+            assertThat(savedQuiz.getCorrectChoiceNumber()).isEqualTo(1);
+            assertThat(savedQuiz.getChoices()).hasSize(4);
         }
 
         @Test
@@ -641,7 +647,7 @@ class ChatRoomServiceTest {
     @DisplayName("채팅방 참여")
     class JoinChatRoom {
 
-        private ChattingRoom createWaitingRoomWithQuiz(int currentMemberCount) {
+        private ChattingRoom createWaitingRoom(int currentMemberCount) {
             ChattingRoom room = ChattingRoom.builder()
                     .topic("주제")
                     .description("설명")
@@ -650,24 +656,26 @@ class ChatRoomServiceTest {
             ReflectionTestUtils.setField(room, "id", ROOM_ID);
             ReflectionTestUtils.setField(room, "status", RoomStatus.WAITING);
             ReflectionTestUtils.setField(room, "currentMemberCount", currentMemberCount);
+            return room;
+        }
 
+        private void stubQuiz() {
             Quiz quiz = mock(Quiz.class);
             lenient().when(quiz.isCorrect(1)).thenReturn(true);
-            ReflectionTestUtils.setField(room, "quiz", quiz);
-
-            return room;
+            lenient().when(quizRepository.findById(ROOM_ID)).thenReturn(Optional.of(quiz));
         }
 
         @Test
         @DisplayName("유효한 요청으로 채팅방에 참여하면 WaitingRoomResponse를 반환한다")
         void joinChatRoom_success() {
             // given
-            ChattingRoom room = createWaitingRoomWithQuiz(1);
+            ChattingRoom room = createWaitingRoom(1);
             ChatRoomJoinRequest request = new ChatRoomJoinRequest(Position.AGREE, 1);
 
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(false);
+            stubQuiz();
             given(chattingRoomMemberRepository.countByChattingRoomIdAndPositionAndStatusIn(
                     eq(ROOM_ID), eq(Position.AGREE), any())).willReturn(0);
             stubUserInfo();
@@ -734,7 +742,7 @@ class ChatRoomServiceTest {
         @DisplayName("이미 참여 중이면 CHAT_ROOM_ALREADY_JOINED 예외가 발생한다")
         void joinChatRoom_alreadyJoined() {
             // given
-            ChattingRoom room = createWaitingRoomWithQuiz(1);
+            ChattingRoom room = createWaitingRoom(1);
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(true);
@@ -751,7 +759,10 @@ class ChatRoomServiceTest {
         @DisplayName("퀴즈 오답이면 CHAT_ROOM_QUIZ_WRONG_ANSWER 예외가 발생한다")
         void joinChatRoom_quizWrongAnswer() {
             // given
-            ChattingRoom room = createWaitingRoomWithQuiz(1);
+            ChattingRoom room = createWaitingRoom(1);
+            Quiz quiz = mock(Quiz.class);
+            given(quiz.isCorrect(2)).willReturn(false);
+            given(quizRepository.findById(ROOM_ID)).willReturn(Optional.of(quiz));
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(false);
@@ -768,7 +779,8 @@ class ChatRoomServiceTest {
         @DisplayName("정원이 가득 차면 CHAT_ROOM_FULL 예외가 발생한다")
         void joinChatRoom_roomFull() {
             // given
-            ChattingRoom room = createWaitingRoomWithQuiz(4);
+            ChattingRoom room = createWaitingRoom(4);
+            stubQuiz();
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(false);
@@ -785,7 +797,8 @@ class ChatRoomServiceTest {
         @DisplayName("해당 포지션이 가득 차면 CHAT_ROOM_POSITION_FULL 예외가 발생한다")
         void joinChatRoom_positionFull() {
             // given
-            ChattingRoom room = createWaitingRoomWithQuiz(2);
+            ChattingRoom room = createWaitingRoom(2);
+            stubQuiz();
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(false);
@@ -804,7 +817,8 @@ class ChatRoomServiceTest {
         @DisplayName("사용자 정보가 없으면 USER_NOT_FOUND 예외가 발생한다")
         void joinChatRoom_userNotFound() {
             // given
-            ChattingRoom room = createWaitingRoomWithQuiz(1);
+            ChattingRoom room = createWaitingRoom(1);
+            stubQuiz();
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(false);
