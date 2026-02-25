@@ -63,9 +63,6 @@ COPY --from=extract-api /workspace/extracted/dependencies/ ./
 COPY --from=extract-api /workspace/extracted/spring-boot-loader/ ./
 COPY --from=extract-api /workspace/extracted/snapshot-dependencies/ ./
 COPY --from=extract-api /workspace/extracted/application/ ./
-
-RUN mkdir -p /app/logs && chown app:app /app/logs
-
 USER app
 EXPOSE 8080
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
@@ -82,9 +79,6 @@ COPY --from=extract-chat /workspace/extracted/dependencies/ ./
 COPY --from=extract-chat /workspace/extracted/spring-boot-loader/ ./
 COPY --from=extract-chat /workspace/extracted/snapshot-dependencies/ ./
 COPY --from=extract-chat /workspace/extracted/application/ ./
-
-RUN mkdir -p /app/logs && chown app:app /app/logs
-
 USER app
 EXPOSE 8081
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
