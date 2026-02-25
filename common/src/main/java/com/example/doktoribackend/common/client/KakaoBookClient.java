@@ -27,7 +27,7 @@ public class KakaoBookClient {
     private String restApiKey;
 
     public KakaoBookResponse search(String query, int page, int size) {
-        String url = UriComponentsBuilder.fromUriString("https://dapi.kakao.com/v3/search/book")
+        String url = UriComponentsBuilder.fromUriString(baseUrl)
                 .queryParam("query", query)
                 .queryParam("page", page)
                 .queryParam("size", size)
@@ -58,7 +58,7 @@ public class KakaoBookClient {
     }
 
     public Optional<KakaoBookResponse.KakaoBookDocument> searchByIsbn(String isbn) {
-        String url = UriComponentsBuilder.fromUriString("https://dapi.kakao.com/v3/search/book")
+        String url = UriComponentsBuilder.fromUriString(baseUrl)
                 .queryParam("query", isbn)
                 .queryParam("target", "isbn")
                 .queryParam("size", 1)
