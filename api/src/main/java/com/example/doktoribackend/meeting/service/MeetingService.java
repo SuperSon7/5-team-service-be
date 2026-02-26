@@ -794,4 +794,26 @@ public class MeetingService {
                 .status(newStatus.name())
                 .build();
     }
+
+    @Transactional
+    public void cancelParticipation(Long userId, Long meetingId) {
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1. 모임 존재 여부 확인
+        if (!meetingRepository.existsByIdAndDeletedAtIsNull(meetingId)) {
+            throw new BusinessException(ErrorCode.MEETING_NOT_FOUND);
+        }
+
+        // 2. 본인 참여 요청 조회
+        MeetingMember myRequest = meetingMemberRepository.findByMeetingIdAndUserId(meetingId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.JOIN_REQUEST_NOT_FOUND));
+
+        // 3. PENDING 상태인지 확인
+        if (!myRequest.isPending()) {
+            throw new BusinessException(ErrorCode.PARTICIPATION_CANCEL_NOT_ALLOWED);
+        }
+
+        // 4. 취소 처리 (status = LEFT, left_at = now)
+        myRequest.cancel(now);
+    }
 }
