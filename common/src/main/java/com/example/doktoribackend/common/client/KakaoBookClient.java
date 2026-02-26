@@ -50,7 +50,6 @@ public class KakaoBookClient {
         } catch (BusinessException ex) {
             throw ex;
         } catch (Exception ex) {
-            log.warn("Kakao book search failed: {}", ex.getMessage());
             throw new BusinessException(ErrorCode.UPSTREAM_KAKAO_FAILED);
         }
     }
