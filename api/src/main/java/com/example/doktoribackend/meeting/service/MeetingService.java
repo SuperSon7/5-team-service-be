@@ -816,4 +816,10 @@ public class MeetingService {
         // 4. 취소 처리 (status = LEFT, left_at = now)
         myRequest.cancel(now);
     }
+
+    @Transactional
+    public void leaveMeeting(Long userId, Long meetingId) {
+        // TODO: 커밋 2에서 구현
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
 }
