@@ -959,7 +959,7 @@ class ChatRoomControllerTest {
     }
 
     @Nested
-    @DisplayName("AI 퀴즈 추천 - POST /chat-rooms/quiz/suggest")
+    @DisplayName("AI 퀴즈 추천 - POST /chat-rooms/quiz-recommendations")
     class SuggestQuiz {
 
         private AiQuizSuggestResponse validSuggestResponse() {
@@ -983,7 +983,7 @@ class ChatRoomControllerTest {
             given(aiQuizGenerationService.suggest(eq(USER_ID), any()))
                     .willReturn(validSuggestResponse());
 
-            mockMvc.perform(post("/chat-rooms/quiz/suggest")
+            mockMvc.perform(post("/chat-rooms/quiz-recommendations")
                             .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
@@ -1003,7 +1003,7 @@ class ChatRoomControllerTest {
         void suggestQuiz_authorBlank_returns422() throws Exception {
             AiQuizSuggestRequest req = new AiQuizSuggestRequest("", "아몬드", 0L);
 
-            mockMvc.perform(post("/chat-rooms/quiz/suggest")
+            mockMvc.perform(post("/chat-rooms/quiz-recommendations")
                             .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
@@ -1016,7 +1016,7 @@ class ChatRoomControllerTest {
         void suggestQuiz_titleNull_returns422() throws Exception {
             AiQuizSuggestRequest req = new AiQuizSuggestRequest("손원평", null, 0L);
 
-            mockMvc.perform(post("/chat-rooms/quiz/suggest")
+            mockMvc.perform(post("/chat-rooms/quiz-recommendations")
                             .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
@@ -1029,7 +1029,7 @@ class ChatRoomControllerTest {
         void suggestQuiz_roomIdNull_returns422() throws Exception {
             AiQuizSuggestRequest req = new AiQuizSuggestRequest("손원평", "아몬드", null);
 
-            mockMvc.perform(post("/chat-rooms/quiz/suggest")
+            mockMvc.perform(post("/chat-rooms/quiz-recommendations")
                             .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
@@ -1043,7 +1043,7 @@ class ChatRoomControllerTest {
             willThrow(new BusinessException(ErrorCode.AI_QUIZ_GENERATION_LIMIT_EXCEEDED))
                     .given(aiQuizGenerationService).suggest(eq(USER_ID), any());
 
-            mockMvc.perform(post("/chat-rooms/quiz/suggest")
+            mockMvc.perform(post("/chat-rooms/quiz-recommendations")
                             .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
@@ -1058,7 +1058,7 @@ class ChatRoomControllerTest {
             willThrow(new BusinessException(ErrorCode.AI_QUIZ_GENERATION_FAILED))
                     .given(aiQuizGenerationService).suggest(eq(USER_ID), any());
 
-            mockMvc.perform(post("/chat-rooms/quiz/suggest")
+            mockMvc.perform(post("/chat-rooms/quiz-recommendations")
                             .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
