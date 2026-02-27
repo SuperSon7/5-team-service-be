@@ -13,7 +13,7 @@ public interface LeaveMeetingApi {
 
     @AuthErrorResponses
     @Operation(
-            tags = {"Leave Meeting"},
+            tags = {"Meeting"},
             summary = "모임 탈퇴",
             description = "본인이 해당 모임에서 탈퇴합니다. APPROVED 상태인 멤버만 탈퇴 가능하며, 모임장은 위임 후 탈퇴해야 합니다."
     )

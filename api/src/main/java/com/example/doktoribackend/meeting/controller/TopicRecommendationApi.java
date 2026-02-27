@@ -17,7 +17,7 @@ public interface TopicRecommendationApi {
     @CommonErrorResponses
     @AuthErrorResponses
     @Operation(
-            tags = {"Topic Recommendation"},
+            tags = {"Meeting"},
             summary = "토론 주제 AI 추천",
             description = "모임장이 특정 회차의 토론 주제를 AI로 추천받습니다."
     )
