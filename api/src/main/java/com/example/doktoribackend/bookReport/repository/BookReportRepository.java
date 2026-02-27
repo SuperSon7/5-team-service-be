@@ -1,8 +1,10 @@
 package com.example.doktoribackend.bookReport.repository;
 
 import com.example.doktoribackend.bookReport.domain.BookReport;
+import com.example.doktoribackend.bookReport.domain.BookReportStatus;
 import com.example.doktoribackend.bookReport.dto.BookReportProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -54,6 +56,33 @@ public interface BookReportRepository extends JpaRepository<BookReport, Long> {
             "AND br.deletedAt IS NULL " +
             "GROUP BY br.user.id")
     List<MemberApprovedCountProjection> countApprovedByMeetingIdGroupByUser(@Param("meetingId") Long meetingId);
+
+    @Query("SELECT br.id AS bookReportId, br.user.id AS userId, " +
+            "mr.meeting.id AS meetingId, mr.meeting.title AS meetingTitle " +
+            "FROM BookReport br JOIN br.meetingRound mr " +
+            "WHERE br.status = 'PENDING_REVIEW' " +
+            "AND br.deletedAt IS NULL " +
+            "AND br.createdAt <= :threshold")
+    List<StaleReportProjection> findStalePendingReportProjections(@Param("threshold") LocalDateTime threshold);
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE BookReport br " +
+            "SET br.status = :rejectedStatus, br.rejectionReason = :reason, br.aiValidatedAt = :now " +
+            "WHERE br.status = 'PENDING_REVIEW' " +
+            "AND br.deletedAt IS NULL " +
+            "AND br.createdAt <= :threshold")
+    int bulkRejectStalePendingReports(
+            @Param("threshold") LocalDateTime threshold,
+            @Param("reason") String reason,
+            @Param("now") LocalDateTime now,
+            @Param("rejectedStatus") BookReportStatus rejectedStatus);
+
+    interface StaleReportProjection {
+        Long getBookReportId();
+        Long getUserId();
+        Long getMeetingId();
+        String getMeetingTitle();
+    }
 
     interface MemberApprovedCountProjection {
         Long getUserId();
