@@ -13,7 +13,7 @@ public interface CancelParticipationApi {
 
     @AuthErrorResponses
     @Operation(
-            tags = {"Cancel Participation"},
+            tags = {"Meeting"},
             summary = "참여 요청 취소",
             description = "본인의 모임 참여 요청(PENDING 상태)을 취소합니다."
     )

@@ -18,7 +18,7 @@ public interface LeaderDelegationApi {
     @CommonErrorResponses
     @AuthErrorResponses
     @Operation(
-            tags = {"Leader Delegation"},
+            tags = {"Meeting"},
             summary = "모임장 위임",
             description = "모임장이 다른 모임원에게 모임장 권한을 위임합니다."
     )

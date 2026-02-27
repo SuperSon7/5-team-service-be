@@ -18,7 +18,7 @@ public interface MeetingParticipationApi {
     @CommonErrorResponses
     @AuthErrorResponses
     @Operation(
-            tags = {"Meeting Participation"},
+            tags = {"Meeting"},
             summary = "참여 요청 승인/거절",
             description = "모임장이 참여 요청을 승인하거나 거절합니다."
     )
