@@ -55,12 +55,9 @@ public class RoundSummaryService {
             String summaryJson = objectMapper.writeValueAsString(response.summary());
 
             TransactionTemplate writeTx = new TransactionTemplate(transactionManager);
-            writeTx.executeWithoutResult(status -> {
-                RoomRound round = roomRoundRepository.findById(roundId).orElse(null);
-                if (round != null) {
-                    round.updateSummary(summaryJson);
-                }
-            });
+            writeTx.executeWithoutResult(status ->
+                roomRoundRepository.findById(roundId).ifPresent(round -> round.updateSummary(summaryJson))
+            );
 
             log.info("AI summary generated successfully: roomId={}, roundNumber={}", roomId, roundNumber);
 
@@ -110,24 +107,29 @@ public class RoundSummaryService {
     }
 
     private AiSummaryResponse requestWithRetry(Long roomId, AiSummaryRequest request) {
-        int attempt = 0;
-        while (true) {
-            try {
-                return aiSummaryClient.requestSummary(roomId, request);
-            } catch (Exception e) {
-                attempt++;
-                if (attempt >= MAX_RETRY) {
-                    throw e;
-                }
-                long waitMs = attempt * 2000L;
-                log.warn("AI summary request failed (attempt {}), retrying in {}ms: {}", attempt, waitMs, e.getMessage());
-                try {
-                    Thread.sleep(waitMs);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(ie);
-                }
+        return requestWithRetry(roomId, request, 1);
+    }
+
+    private AiSummaryResponse requestWithRetry(Long roomId, AiSummaryRequest request, int attempt) {
+        try {
+            return aiSummaryClient.requestSummary(roomId, request);
+        } catch (Exception e) {
+            if (attempt >= MAX_RETRY) {
+                throw e;
             }
+            long waitMs = attempt * 2000L;
+            log.warn("AI summary request failed (attempt {}), retrying in {}ms: {}", attempt, waitMs, e.getMessage());
+            sleep(waitMs);
+            return requestWithRetry(roomId, request, attempt + 1);
+        }
+    }
+
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
         }
     }
 }
