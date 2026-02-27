@@ -3,7 +3,6 @@ package com.example.doktoribackend.summary.service;
 import com.example.doktoribackend.message.domain.Message;
 import com.example.doktoribackend.message.repository.MessageRepository;
 import com.example.doktoribackend.room.domain.ChattingRoomMember;
-import com.example.doktoribackend.room.domain.RoomRound;
 import com.example.doktoribackend.room.repository.ChattingRoomMemberRepository;
 import com.example.doktoribackend.room.repository.RoomRoundRepository;
 import com.example.doktoribackend.summary.client.AiSummaryClient;
