@@ -210,6 +210,11 @@ jobs:
                 aws ssm list-command-invocations --command-id "$CMD_ID" --details \
                   --query "CommandInvocations[0].CommandPlugins[0].Output" --output text || true
                 exit 1 ;;
+              None)
+                if [ "$i" -ge 3 ]; then
+                  echo "::error::No instance matched SSM target (status=None)"
+                  exit 1
+                fi ;;
             esac
           done
           echo "::error::SSM command timed out"
@@ -294,6 +299,11 @@ jobs:
                   aws ssm list-command-invocations --command-id "$cmd_id" --details \
                     --query "CommandInvocations[0].CommandPlugins[0].Output" --output text || true
                   return 1 ;;
+                None)
+                  if [ "$i" -ge 3 ]; then
+                    echo "::error::${label}: no instance matched SSM target (status=None)"
+                    return 1
+                  fi ;;
               esac
             done
             echo "::error::${label} timed out"; return 1
@@ -355,9 +365,9 @@ jobs:
 
           # 3) Health check — 새 컨테이너 readiness 확인
           HEALTH_CMDS=$(jq -n --arg np "$NEW_PORT" --arg hp "$HEALTH_PATH" '[
-            "for i in $(seq 1 12); do",
+            "for i in $(seq 1 30); do",
             ("  if curl -sf http://localhost:" + $np + $hp + " > /dev/null 2>&1; then echo \"HEALTHY\"; exit 0; fi"),
-            "  echo \"Waiting... ($i/12)\"; sleep 5",
+            "  echo \"Waiting... ($i/30)\"; sleep 10",
             "done",
             "echo \"UNHEALTHY\"; exit 1"
           ]')
@@ -365,11 +375,11 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --targets "Key=tag:Name,Values=doktori-prod-api" \
             --parameters "{\"commands\": $HEALTH_CMDS}" \
-            --timeout-seconds 120 \
+            --timeout-seconds 360 \
             --comment "health check api ${NEW_COLOR}" \
             --query "Command.CommandId" --output text)
 
-          if ! wait_ssm "$HEALTH_ID" "health-api" 30; then
+          if ! wait_ssm "$HEALTH_ID" "health-api" 75; then
             echo "::error::Health check failed — rolling back"
             ROLLBACK_CMDS=$(jq -n --arg name "doktori-api-${NEW_COLOR}" '[
               ("docker stop " + $name + " 2>/dev/null || true"),
@@ -474,6 +484,11 @@ jobs:
                   aws ssm list-command-invocations --command-id "$cmd_id" --details \
                     --query "CommandInvocations[0].CommandPlugins[0].Output" --output text || true
                   return 1 ;;
+                None)
+                  if [ "$i" -ge 3 ]; then
+                    echo "::error::${label}: no instance matched SSM target (status=None)"
+                    return 1
+                  fi ;;
               esac
             done
             echo "::error::${label} timed out"; return 1
@@ -535,9 +550,9 @@ jobs:
 
           # 3) Health check
           HEALTH_CMDS=$(jq -n --arg np "$NEW_PORT" --arg hp "$HEALTH_PATH" '[
-            "for i in $(seq 1 12); do",
+            "for i in $(seq 1 30); do",
             ("  if curl -sf http://localhost:" + $np + $hp + " > /dev/null 2>&1; then echo \"HEALTHY\"; exit 0; fi"),
-            "  echo \"Waiting... ($i/12)\"; sleep 5",
+            "  echo \"Waiting... ($i/30)\"; sleep 10",
             "done",
             "echo \"UNHEALTHY\"; exit 1"
           ]')
@@ -545,11 +560,11 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --targets "Key=tag:Name,Values=doktori-prod-chat" \
             --parameters "{\"commands\": $HEALTH_CMDS}" \
-            --timeout-seconds 120 \
+            --timeout-seconds 360 \
             --comment "health check chat ${NEW_COLOR}" \
             --query "Command.CommandId" --output text)
 
-          if ! wait_ssm "$HEALTH_ID" "health-chat" 30; then
+          if ! wait_ssm "$HEALTH_ID" "health-chat" 75; then
             echo "::error::Health check failed — rolling back"
             ROLLBACK_CMDS=$(jq -n --arg name "doktori-chat-${NEW_COLOR}" '[
               ("docker stop " + $name + " 2>/dev/null || true"),
