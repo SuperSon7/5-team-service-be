@@ -466,7 +466,7 @@ jobs:
           TAG="${{ needs.build-and-push.outputs.image-tag }}"
           SERVICE="chat"
           BLUE_PORT=8081; GREEN_PORT=8083; INTERNAL_PORT=8081
-          HEALTH_PATH="/api/chat/actuator/health"
+          HEALTH_PATH="/api/actuator/health"
 
           wait_ssm() {
             local cmd_id=$1 label=$2 max=${3:-60}
