@@ -210,6 +210,11 @@ jobs:
                 aws ssm list-command-invocations --command-id "$CMD_ID" --details \
                   --query "CommandInvocations[0].CommandPlugins[0].Output" --output text || true
                 exit 1 ;;
+              None)
+                if [ "$i" -ge 3 ]; then
+                  echo "::error::No instance matched SSM target (status=None)"
+                  exit 1
+                fi ;;
             esac
           done
           echo "::error::SSM command timed out"
@@ -294,6 +299,11 @@ jobs:
                   aws ssm list-command-invocations --command-id "$cmd_id" --details \
                     --query "CommandInvocations[0].CommandPlugins[0].Output" --output text || true
                   return 1 ;;
+                None)
+                  if [ "$i" -ge 3 ]; then
+                    echo "::error::${label}: no instance matched SSM target (status=None)"
+                    return 1
+                  fi ;;
               esac
             done
             echo "::error::${label} timed out"; return 1
@@ -474,6 +484,11 @@ jobs:
                   aws ssm list-command-invocations --command-id "$cmd_id" --details \
                     --query "CommandInvocations[0].CommandPlugins[0].Output" --output text || true
                   return 1 ;;
+                None)
+                  if [ "$i" -ge 3 ]; then
+                    echo "::error::${label}: no instance matched SSM target (status=None)"
+                    return 1
+                  fi ;;
               esac
             done
             echo "::error::${label} timed out"; return 1
