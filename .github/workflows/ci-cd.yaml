@@ -380,7 +380,26 @@ jobs:
             --query "Command.CommandId" --output text)
 
           if ! wait_ssm "$HEALTH_ID" "health-api" 75; then
-            echo "::error::Health check failed — rolling back"
+            echo "::error::Health check failed — collecting logs before rollback"
+            LOGS_CMDS=$(jq -n --arg name "doktori-api-${NEW_COLOR}" '[
+              ("echo \"=== Container Status ===\""),
+              ("docker inspect " + $name + " --format=\"Status={{.State.Status}} ExitCode={{.State.ExitCode}}\" 2>&1 || echo \"container not found\""),
+              ("echo \"=== Last 80 lines of logs ===\""),
+              ("docker logs " + $name + " --tail 80 2>&1 || echo \"no logs available\"")
+            ]')
+            LOGS_ID=$(aws ssm send-command \
+              --document-name "AWS-RunShellScript" \
+              --targets "Key=tag:Name,Values=doktori-prod-api" \
+              --parameters "{\"commands\": $LOGS_CMDS}" \
+              --timeout-seconds 30 \
+              --comment "collect api logs before rollback" \
+              --query "Command.CommandId" --output text)
+            if wait_ssm "$LOGS_ID" "collect-logs-api" 12; then
+              aws ssm list-command-invocations --command-id "$LOGS_ID" --details \
+                --query "CommandInvocations[0].CommandPlugins[0].Output" --output text || true
+            fi
+
+            echo "::error::Rolling back API deployment"
             ROLLBACK_CMDS=$(jq -n --arg name "doktori-api-${NEW_COLOR}" '[
               ("docker stop " + $name + " 2>/dev/null || true"),
               ("docker rm " + $name + " 2>/dev/null || true")
@@ -402,10 +421,10 @@ jobs:
           # - docker rm + run: 호스트 볼륨 마운트(-v /opt/nginx-state:/etc/nginx/state) 필요
           SWITCH_CMDS=$(jq -n --arg np "$NEW_PORT" '[
             "set -e",
-            ("docker exec doktori-nginx sed -i -E \"s/:[0-9]+;/:" + $np + ";/\" /etc/nginx/conf.d/upstream-api.conf"),
-            "docker exec doktori-nginx nginx -t",
-            "docker exec doktori-nginx nginx -s reload",
-            ("docker exec doktori-nginx sh -c \"mkdir -p /etc/nginx/state && echo " + $np + " > /etc/nginx/state/active-port-api\""),
+            ("docker exec nginx sed -i -E \"s/:[0-9]+;/:" + $np + ";/\" /etc/nginx/conf.d/upstream-api.conf"),
+            "docker exec nginx nginx -t",
+            "docker exec nginx nginx -s reload",
+            ("docker exec nginx sh -c \"mkdir -p /etc/nginx/state && echo " + $np + " > /etc/nginx/state/active-port-api\""),
             "mkdir -p /opt/nginx-state",
             ("echo " + $np + " > /opt/nginx-state/active-port-api")
           ]')
@@ -565,7 +584,26 @@ jobs:
             --query "Command.CommandId" --output text)
 
           if ! wait_ssm "$HEALTH_ID" "health-chat" 75; then
-            echo "::error::Health check failed — rolling back"
+            echo "::error::Health check failed — collecting logs before rollback"
+            LOGS_CMDS=$(jq -n --arg name "doktori-chat-${NEW_COLOR}" '[
+              ("echo \"=== Container Status ===\""),
+              ("docker inspect " + $name + " --format=\"Status={{.State.Status}} ExitCode={{.State.ExitCode}}\" 2>&1 || echo \"container not found\""),
+              ("echo \"=== Last 80 lines of logs ===\""),
+              ("docker logs " + $name + " --tail 80 2>&1 || echo \"no logs available\"")
+            ]')
+            LOGS_ID=$(aws ssm send-command \
+              --document-name "AWS-RunShellScript" \
+              --targets "Key=tag:Name,Values=doktori-prod-chat" \
+              --parameters "{\"commands\": $LOGS_CMDS}" \
+              --timeout-seconds 30 \
+              --comment "collect chat logs before rollback" \
+              --query "Command.CommandId" --output text)
+            if wait_ssm "$LOGS_ID" "collect-logs-chat" 12; then
+              aws ssm list-command-invocations --command-id "$LOGS_ID" --details \
+                --query "CommandInvocations[0].CommandPlugins[0].Output" --output text || true
+            fi
+
+            echo "::error::Rolling back Chat deployment"
             ROLLBACK_CMDS=$(jq -n --arg name "doktori-chat-${NEW_COLOR}" '[
               ("docker stop " + $name + " 2>/dev/null || true"),
               ("docker rm " + $name + " 2>/dev/null || true")
@@ -584,10 +622,10 @@ jobs:
           # 4) Nginx switch
           SWITCH_CMDS=$(jq -n --arg np "$NEW_PORT" '[
             "set -e",
-            ("docker exec doktori-nginx sed -i -E \"s/:[0-9]+;/:" + $np + ";/\" /etc/nginx/conf.d/upstream-chat.conf"),
-            "docker exec doktori-nginx nginx -t",
-            "docker exec doktori-nginx nginx -s reload",
-            ("docker exec doktori-nginx sh -c \"mkdir -p /etc/nginx/state && echo " + $np + " > /etc/nginx/state/active-port-chat\""),
+            ("docker exec nginx sed -i -E \"s/:[0-9]+;/:" + $np + ";/\" /etc/nginx/conf.d/upstream-chat.conf"),
+            "docker exec nginx nginx -t",
+            "docker exec nginx nginx -s reload",
+            ("docker exec nginx sh -c \"mkdir -p /etc/nginx/state && echo " + $np + " > /etc/nginx/state/active-port-chat\""),
             "mkdir -p /opt/nginx-state",
             ("echo " + $np + " > /opt/nginx-state/active-port-chat")
           ]')
