@@ -310,10 +310,11 @@ jobs:
           }
 
           # 1) Discover — 현재 활성 컨테이너/색상 확인
+          # legacy(doktori-api, backend-api)를 먼저 체크: 8080 포트를 점유하므로 Green으로 가야 함
           DISCOVER_CMDS=$(jq -n '[
-            "if docker ps --format \"{{.Names}}\" | grep -qE \"doktori-api-blue\"; then echo \"ACTIVE=blue\";",
+            "if docker ps --format \"{{.Names}}\" | grep -qE \"^(backend-api|doktori-api)$\"; then echo \"ACTIVE=legacy\";",
+            "elif docker ps --format \"{{.Names}}\" | grep -qE \"doktori-api-blue\"; then echo \"ACTIVE=blue\";",
             "elif docker ps --format \"{{.Names}}\" | grep -qE \"doktori-api-green\"; then echo \"ACTIVE=green\";",
-            "elif docker ps --format \"{{.Names}}\" | grep -qE \"(backend-api|doktori-api)$\"; then echo \"ACTIVE=legacy\";",
             "else echo \"ACTIVE=none\"; fi"
           ]')
           DISCOVER_ID=$(aws ssm send-command \
@@ -513,11 +514,11 @@ jobs:
             echo "::error::${label} timed out"; return 1
           }
 
-          # 1) Discover
+          # 1) Discover — legacy를 먼저 체크
           DISCOVER_CMDS=$(jq -n '[
-            "if docker ps --format \"{{.Names}}\" | grep -qE \"doktori-chat-blue\"; then echo \"ACTIVE=blue\";",
+            "if docker ps --format \"{{.Names}}\" | grep -qE \"^(backend-chat|doktori-chat)$\"; then echo \"ACTIVE=legacy\";",
+            "elif docker ps --format \"{{.Names}}\" | grep -qE \"doktori-chat-blue\"; then echo \"ACTIVE=blue\";",
             "elif docker ps --format \"{{.Names}}\" | grep -qE \"doktori-chat-green\"; then echo \"ACTIVE=green\";",
-            "elif docker ps --format \"{{.Names}}\" | grep -qE \"(backend-chat|doktori-chat)$\"; then echo \"ACTIVE=legacy\";",
             "else echo \"ACTIVE=none\"; fi"
           ]')
           DISCOVER_ID=$(aws ssm send-command \
