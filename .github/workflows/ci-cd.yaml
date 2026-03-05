@@ -141,8 +141,6 @@ jobs:
             } >> $GITHUB_OUTPUT
           fi
           echo "image-tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "api-cache=${REGISTRY}/doktori/backend-api:cache" >> $GITHUB_OUTPUT
-          echo "chat-cache=${REGISTRY}/doktori/backend-chat:cache" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -155,7 +153,6 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.api-tags }}
-          cache-from: type=registry,ref=${{ steps.meta.outputs.api-cache }}
 
       - name: Build and push Chat image
         uses: docker/build-push-action@v6
@@ -165,11 +162,10 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.chat-tags }}
-          cache-from: type=registry,ref=${{ steps.meta.outputs.chat-cache }}
 
   deploy-dev:
     needs: build-and-push
-    if: false  # ECR 캐시 테스트 중 배포 스킵
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
