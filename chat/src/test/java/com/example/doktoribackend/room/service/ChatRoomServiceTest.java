@@ -4,6 +4,7 @@ import com.example.doktoribackend.book.domain.Book;
 import com.example.doktoribackend.book.repository.BookRepository;
 import com.example.doktoribackend.book.service.BookService;
 import com.example.doktoribackend.common.error.ErrorCode;
+import com.example.doktoribackend.exception.AlreadyJoinedRoomException;
 import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.quiz.service.QuizService;
 import com.example.doktoribackend.summary.service.RoundSummaryService;
@@ -157,8 +158,8 @@ class ChatRoomServiceTest {
             ChatRoomCreateRequest request = createValidRequest(4);
             given(bookService.resolveBook(TEST_ISBN)).willReturn(createTestBook());
             given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
-            given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
-                    eq(USER_ID), any())).willReturn(false);
+            given(chattingRoomMemberRepository.findFirstByUserIdAndStatusIn(
+                    eq(USER_ID), any())).willReturn(Optional.empty());
             given(chattingRoomRepository.save(any(ChattingRoom.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
             stubUserInfo();
@@ -179,8 +180,8 @@ class ChatRoomServiceTest {
             ChatRoomCreateRequest request = createValidRequest(4);
             given(bookService.resolveBook(TEST_ISBN)).willReturn(createTestBook());
             given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
-            given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
-                    eq(USER_ID), any())).willReturn(false);
+            given(chattingRoomMemberRepository.findFirstByUserIdAndStatusIn(
+                    eq(USER_ID), any())).willReturn(Optional.empty());
             given(chattingRoomRepository.save(any(ChattingRoom.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
             stubUserInfo();
@@ -199,8 +200,8 @@ class ChatRoomServiceTest {
             ChatRoomCreateRequest request = createValidRequest(4);
             given(bookService.resolveBook(TEST_ISBN)).willReturn(createTestBook());
             given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
-            given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
-                    eq(USER_ID), any())).willReturn(false);
+            given(chattingRoomMemberRepository.findFirstByUserIdAndStatusIn(
+                    eq(USER_ID), any())).willReturn(Optional.empty());
             given(chattingRoomRepository.save(any(ChattingRoom.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
             stubUserInfo();
@@ -232,8 +233,8 @@ class ChatRoomServiceTest {
             ChatRoomCreateRequest request = createValidRequest(capacity);
             given(bookService.resolveBook(TEST_ISBN)).willReturn(createTestBook());
             given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
-            given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
-                    eq(USER_ID), any())).willReturn(false);
+            given(chattingRoomMemberRepository.findFirstByUserIdAndStatusIn(
+                    eq(USER_ID), any())).willReturn(Optional.empty());
             given(chattingRoomRepository.save(any(ChattingRoom.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
             stubUserInfo();
@@ -267,20 +268,24 @@ class ChatRoomServiceTest {
     class DuplicateJoinValidation {
 
         @Test
-        @DisplayName("이미 WAITING, JOINED 또는 DISCONNECTED 상태로 참여 중이면 CHAT_ROOM_ALREADY_JOINED 예외가 발생한다")
+        @DisplayName("이미 WAITING, JOINED 또는 DISCONNECTED 상태로 참여 중이면 AlreadyJoinedRoomException이 발생하고 roomId를 포함한다")
         void alreadyJoined_throwsException() {
             // given
+            Long otherRoomId = 99L;
             ChatRoomCreateRequest request = createValidRequest(4);
             given(bookService.resolveBook(TEST_ISBN)).willReturn(createTestBook());
-            given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
-                    USER_ID, List.of(MemberStatus.WAITING, MemberStatus.JOINED, MemberStatus.DISCONNECTED)))
-                    .willReturn(true);
+            ChattingRoom otherRoom = mock(ChattingRoom.class);
+            given(otherRoom.getId()).willReturn(otherRoomId);
+            ChattingRoomMember existingMember = mock(ChattingRoomMember.class);
+            given(existingMember.getChattingRoom()).willReturn(otherRoom);
+            given(chattingRoomMemberRepository.findFirstByUserIdAndStatusIn(eq(USER_ID), any()))
+                    .willReturn(Optional.of(existingMember));
 
             // when & then
             assertThatThrownBy(() -> chatRoomService.createChatRoom(USER_ID, request))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(ErrorCode.CHAT_ROOM_ALREADY_JOINED);
+                    .isInstanceOf(AlreadyJoinedRoomException.class)
+                    .extracting(e -> ((AlreadyJoinedRoomException) e).getRoomId())
+                    .isEqualTo(otherRoomId);
 
             then(chattingRoomRepository).should(never()).save(any());
         }
@@ -292,8 +297,8 @@ class ChatRoomServiceTest {
             ChatRoomCreateRequest request = createValidRequest(4);
             given(bookService.resolveBook(TEST_ISBN)).willReturn(createTestBook());
             given(bookRepository.getReferenceById(any())).willReturn(createTestBook());
-            given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(
-                    eq(USER_ID), any())).willReturn(false);
+            given(chattingRoomMemberRepository.findFirstByUserIdAndStatusIn(
+                    eq(USER_ID), any())).willReturn(Optional.empty());
             given(chattingRoomRepository.save(any(ChattingRoom.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
             stubUserInfo();
@@ -513,6 +518,17 @@ class ChatRoomServiceTest {
             return room;
         }
 
+        private ChattingRoomMember createMember(ChattingRoom room, MemberStatus status, Position position) {
+            ChattingRoomMember member = ChattingRoomMember.builder()
+                    .chattingRoom(room)
+                    .userId(USER_ID)
+                    .role(MemberRole.PARTICIPANT)
+                    .position(position)
+                    .build();
+            ReflectionTestUtils.setField(member, "status", status);
+            return member;
+        }
+
         @Test
         @DisplayName("유효한 요청으로 채팅방에 참여하면 WaitingRoomResponse를 반환한다")
         void joinChatRoom_success() {
@@ -521,21 +537,21 @@ class ChatRoomServiceTest {
             ChatRoomJoinRequest request = new ChatRoomJoinRequest(Position.AGREE, 1);
 
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.empty());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(false);
             given(chattingRoomMemberRepository.countByChattingRoomIdAndPositionAndStatusIn(
                     eq(ROOM_ID), eq(Position.AGREE), any())).willReturn(0);
             stubUserInfo();
 
-            WaitingRoomResponse expectedResponse = new WaitingRoomResponse(
-                    ROOM_ID, 1, 1, 2, List.of());
+            WaitingRoomResponse expectedResponse = new WaitingRoomResponse(ROOM_ID, 1, 1, 2, List.of());
             given(chatRoomQueryService.buildWaitingRoomResponse(room)).willReturn(expectedResponse);
 
             // when
             WaitingRoomResponse response = chatRoomService.joinChatRoom(ROOM_ID, USER_ID, request);
 
             // then
-            assertThat(response).isNotNull();
             assertThat(response.roomId()).isEqualTo(ROOM_ID);
             then(chattingRoomMemberRepository).should().save(any(ChattingRoomMember.class));
             assertThat(room.getCurrentMemberCount()).isEqualTo(2);
@@ -575,20 +591,145 @@ class ChatRoomServiceTest {
         }
 
         @Test
-        @DisplayName("이미 참여 중이면 CHAT_ROOM_ALREADY_JOINED 예외가 발생한다")
-        void joinChatRoom_alreadyJoined() {
+        @DisplayName("다른 방에 이미 참여 중이면 AlreadyJoinedRoomException이 발생하고 roomId를 포함한다")
+        void joinChatRoom_alreadyJoinedOtherRoom() {
             // given
+            Long otherRoomId = 99L;
             ChattingRoom room = createWaitingRoom(1);
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
-            given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
-                    .willReturn(true);
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.empty());
+            ChattingRoom otherRoom = mock(ChattingRoom.class);
+            given(otherRoom.getId()).willReturn(otherRoomId);
+            ChattingRoomMember existingMember = mock(ChattingRoomMember.class);
+            given(existingMember.getChattingRoom()).willReturn(otherRoom);
+            given(chattingRoomMemberRepository.findFirstByUserIdAndStatusIn(eq(USER_ID), any()))
+                    .willReturn(Optional.of(existingMember));
+            ChatRoomJoinRequest request = new ChatRoomJoinRequest(Position.AGREE, 1);
+
+            // when & then
+            assertThatThrownBy(() -> chatRoomService.joinChatRoom(ROOM_ID, USER_ID, request))
+                    .isInstanceOf(AlreadyJoinedRoomException.class)
+                    .extracting(e -> ((AlreadyJoinedRoomException) e).getRoomId())
+                    .isEqualTo(otherRoomId);
+        }
+
+        @Test
+        @DisplayName("이미 이 방에서 WAITING 상태이면 현재 대기실 상태를 반환한다")
+        void joinChatRoom_alreadyWaiting_returnsCurrentState() {
+            // given
+            ChattingRoom room = createWaitingRoom(2);
+            ChattingRoomMember member = createMember(room, MemberStatus.WAITING, Position.AGREE);
+
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.of(member));
+
+            WaitingRoomResponse expectedResponse = new WaitingRoomResponse(ROOM_ID, 1, 1, 2, List.of());
+            given(chatRoomQueryService.buildWaitingRoomResponse(room)).willReturn(expectedResponse);
+
+            ChatRoomJoinRequest request = new ChatRoomJoinRequest(Position.AGREE, 1);
+
+            // when
+            WaitingRoomResponse response = chatRoomService.joinChatRoom(ROOM_ID, USER_ID, request);
+
+            // then
+            assertThat(response.roomId()).isEqualTo(ROOM_ID);
+            then(chattingRoomMemberRepository).should(never()).save(any());
+            assertThat(room.getCurrentMemberCount()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("이 방에서 나갔다가 재입장하면 WAITING 상태로 복귀하고 인원수가 증가하며 포지션이 변경된다")
+        void joinChatRoom_rejoin_success() {
+            // given
+            ChattingRoom room = createWaitingRoom(1);
+            ChattingRoomMember member = createMember(room, MemberStatus.LEFT, Position.AGREE);
+
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.of(member));
+            given(chattingRoomMemberRepository.countByChattingRoomIdAndPositionAndStatusIn(
+                    eq(ROOM_ID), eq(Position.DISAGREE), any())).willReturn(0);
+
+            WaitingRoomResponse expectedResponse = new WaitingRoomResponse(ROOM_ID, 1, 1, 2, List.of());
+            given(chatRoomQueryService.buildWaitingRoomResponse(room)).willReturn(expectedResponse);
+
+            ChatRoomJoinRequest request = new ChatRoomJoinRequest(Position.DISAGREE, 1);
+
+            // when
+            WaitingRoomResponse response = chatRoomService.joinChatRoom(ROOM_ID, USER_ID, request);
+
+            // then
+            assertThat(response.roomId()).isEqualTo(ROOM_ID);
+            assertThat(member.getStatus()).isEqualTo(MemberStatus.WAITING);
+            assertThat(member.getPosition()).isEqualTo(Position.DISAGREE);
+            assertThat(room.getCurrentMemberCount()).isEqualTo(2);
+            then(chattingRoomMemberRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("재입장 시 퀴즈 오답이면 CHAT_ROOM_QUIZ_WRONG_ANSWER 예외가 발생한다")
+        void joinChatRoom_rejoin_wrongQuiz() {
+            // given
+            ChattingRoom room = createWaitingRoom(1);
+            ChattingRoomMember member = createMember(room, MemberStatus.LEFT, Position.AGREE);
+
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.of(member));
+            org.mockito.BDDMockito.willThrow(new BusinessException(ErrorCode.CHAT_ROOM_QUIZ_WRONG_ANSWER))
+                    .given(quizService).validateQuizAnswer(ROOM_ID, 2);
+
+            ChatRoomJoinRequest request = new ChatRoomJoinRequest(Position.AGREE, 2);
+
+            // when & then
+            assertThatThrownBy(() -> chatRoomService.joinChatRoom(ROOM_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.CHAT_ROOM_QUIZ_WRONG_ANSWER);
+        }
+
+        @Test
+        @DisplayName("재입장 시 정원이 가득 차면 CHAT_ROOM_FULL 예외가 발생한다")
+        void joinChatRoom_rejoin_roomFull() {
+            // given
+            ChattingRoom room = createWaitingRoom(4);
+            ChattingRoomMember member = createMember(room, MemberStatus.LEFT, Position.AGREE);
+
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.of(member));
+
             ChatRoomJoinRequest request = new ChatRoomJoinRequest(Position.AGREE, 1);
 
             // when & then
             assertThatThrownBy(() -> chatRoomService.joinChatRoom(ROOM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(ErrorCode.CHAT_ROOM_ALREADY_JOINED);
+                    .isEqualTo(ErrorCode.CHAT_ROOM_FULL);
+        }
+
+        @Test
+        @DisplayName("재입장 시 포지션이 가득 차면 CHAT_ROOM_POSITION_FULL 예외가 발생한다")
+        void joinChatRoom_rejoin_positionFull() {
+            // given
+            ChattingRoom room = createWaitingRoom(2);
+            ChattingRoomMember member = createMember(room, MemberStatus.LEFT, Position.AGREE);
+
+            given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.of(member));
+            given(chattingRoomMemberRepository.countByChattingRoomIdAndPositionAndStatusIn(
+                    eq(ROOM_ID), eq(Position.AGREE), any())).willReturn(2);
+
+            ChatRoomJoinRequest request = new ChatRoomJoinRequest(Position.AGREE, 1);
+
+            // when & then
+            assertThatThrownBy(() -> chatRoomService.joinChatRoom(ROOM_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.CHAT_ROOM_POSITION_FULL);
         }
 
         @Test
@@ -597,6 +738,8 @@ class ChatRoomServiceTest {
             // given
             ChattingRoom room = createWaitingRoom(1);
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.empty());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(false);
             org.mockito.BDDMockito.willThrow(new BusinessException(ErrorCode.CHAT_ROOM_QUIZ_WRONG_ANSWER))
@@ -616,6 +759,8 @@ class ChatRoomServiceTest {
             // given
             ChattingRoom room = createWaitingRoom(4);
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.empty());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(false);
             ChatRoomJoinRequest request = new ChatRoomJoinRequest(Position.AGREE, 1);
@@ -633,6 +778,8 @@ class ChatRoomServiceTest {
             // given
             ChattingRoom room = createWaitingRoom(2);
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.empty());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(false);
             given(chattingRoomMemberRepository.countByChattingRoomIdAndPositionAndStatusIn(
@@ -652,6 +799,8 @@ class ChatRoomServiceTest {
             // given
             ChattingRoom room = createWaitingRoom(1);
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+            given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                    .willReturn(Optional.empty());
             given(chattingRoomMemberRepository.existsByUserIdAndStatusIn(eq(USER_ID), any()))
                     .willReturn(false);
             given(chattingRoomMemberRepository.countByChattingRoomIdAndPositionAndStatusIn(
@@ -701,6 +850,8 @@ class ChatRoomServiceTest {
             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
                     .willReturn(Optional.of(host));
+            given(chattingRoomMemberRepository.countByChattingRoomIdAndPositionAndStatusIn(
+                    eq(ROOM_ID), eq(Position.DISAGREE), any())).willReturn(1);
             given(chattingRoomMemberRepository.findByChattingRoomIdAndStatusIn(
                     ROOM_ID, List.of(MemberStatus.WAITING)))
                     .willReturn(List.of(host, participant));
@@ -792,26 +943,25 @@ class ChatRoomServiceTest {
                     .isEqualTo(ErrorCode.CHAT_ROOM_NOT_HOST);
         }
 
-        // TODO: 테스트 후 주석 해제
-        // @Test
-        // @DisplayName("상대 포지션에 멤버가 없으면 CHAT_ROOM_INSUFFICIENT_MEMBERS 예외가 발생한다")
-        // void startChatRoom_insufficientMembers() {
-        //     // given
-        //     ChattingRoom room = createWaitingRoom(1);
-        //     ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE);
-        //
-        //     given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
-        //     given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
-        //             .willReturn(Optional.of(host));
-        //     given(chattingRoomMemberRepository.countByChattingRoomIdAndPositionAndStatusIn(
-        //             eq(ROOM_ID), eq(Position.DISAGREE), any())).willReturn(0);
-        //
-        //     // when & then
-        //     assertThatThrownBy(() -> chatRoomService.startChatRoom(ROOM_ID, USER_ID))
-        //             .isInstanceOf(BusinessException.class)
-        //             .extracting(e -> ((BusinessException) e).getErrorCode())
-        //             .isEqualTo(ErrorCode.CHAT_ROOM_INSUFFICIENT_MEMBERS);
-        // }
+         @Test
+         @DisplayName("상대 포지션에 멤버가 없으면 CHAT_ROOM_INSUFFICIENT_MEMBERS 예외가 발생한다")
+         void startChatRoom_insufficientMembers() {
+             // given
+             ChattingRoom room = createWaitingRoom(1);
+             ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE);
+
+             given(chattingRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+             given(chattingRoomMemberRepository.findByChattingRoomIdAndUserId(ROOM_ID, USER_ID))
+                     .willReturn(Optional.of(host));
+             given(chattingRoomMemberRepository.countByChattingRoomIdAndPositionAndStatusIn(
+                     eq(ROOM_ID), eq(Position.DISAGREE), any())).willReturn(0);
+
+             // when & then
+             assertThatThrownBy(() -> chatRoomService.startChatRoom(ROOM_ID, USER_ID))
+                     .isInstanceOf(BusinessException.class)
+                     .extracting(e -> ((BusinessException) e).getErrorCode())
+                     .isEqualTo(ErrorCode.CHAT_ROOM_INSUFFICIENT_MEMBERS);
+         }
     }
 
     @Nested
@@ -906,23 +1056,6 @@ class ChatRoomServiceTest {
         }
 
         @Test
-        @DisplayName("HOST가 아니면 CHAT_ROOM_NOT_HOST 예외가 발생한다")
-        void nextRound_notHost() {
-            // given
-            ChattingRoom room = createChattingRoom();
-            ChattingRoomMember participant = createMember(room, USER_ID, MemberRole.PARTICIPANT, Position.AGREE);
-
-            given(chatRoomQueryService.findChattingRoomAndMember(ROOM_ID, USER_ID))
-                    .willReturn(new ChatRoomQueryService.ChattingRoomAndMember(room, participant));
-
-            // when & then
-            assertThatThrownBy(() -> chatRoomService.nextRound(ROOM_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(ErrorCode.CHAT_ROOM_NOT_HOST);
-        }
-
-        @Test
         @DisplayName("3라운드에서 다음 라운드 시도 시 CHAT_ROOM_MAX_ROUND_REACHED 예외가 발생한다")
         void nextRound_maxRoundReached() {
             // given
@@ -966,20 +1099,20 @@ class ChatRoomServiceTest {
         }
 
         @Test
-        @DisplayName("HOST가 종료하면 방 ENDED, 활성 멤버 LEFT, 활성 라운드 종료된다")
+        @DisplayName("멤버가 종료하면 방 ENDED, 활성 멤버 LEFT, 활성 라운드 종료된다")
         void endChatRoom_success() {
             // given
             ChattingRoom room = createChattingRoom();
-            ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE);
-            ChattingRoomMember participant = createMember(room, 2L, MemberRole.PARTICIPANT, Position.DISAGREE);
+            ChattingRoomMember requester = createMember(room, USER_ID, MemberRole.PARTICIPANT, Position.AGREE);
+            ChattingRoomMember other = createMember(room, 2L, MemberRole.HOST, Position.DISAGREE);
             RoomRound activeRound = RoomRound.builder().chattingRoom(room).roundNumber(3).build();
 
             given(chatRoomQueryService.findChattingRoomAndMember(ROOM_ID, USER_ID))
-                    .willReturn(new ChatRoomQueryService.ChattingRoomAndMember(room, host));
+                    .willReturn(new ChatRoomQueryService.ChattingRoomAndMember(room, requester));
             given(roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(ROOM_ID))
                     .willReturn(Optional.of(activeRound));
             given(chattingRoomMemberRepository.findByChattingRoomIdAndStatusIn(eq(ROOM_ID), any()))
-                    .willReturn(List.of(host, participant));
+                    .willReturn(List.of(requester, other));
 
             // when
             chatRoomService.endChatRoom(ROOM_ID, USER_ID);
@@ -987,8 +1120,8 @@ class ChatRoomServiceTest {
             // then
             assertThat(room.getStatus()).isEqualTo(RoomStatus.ENDED);
             assertThat(activeRound.getEndedAt()).isNotNull();
-            assertThat(host.getStatus()).isEqualTo(MemberStatus.LEFT);
-            assertThat(participant.getStatus()).isEqualTo(MemberStatus.LEFT);
+            assertThat(requester.getStatus()).isEqualTo(MemberStatus.LEFT);
+            assertThat(other.getStatus()).isEqualTo(MemberStatus.LEFT);
         }
 
         @Test
@@ -1038,11 +1171,11 @@ class ChatRoomServiceTest {
         void endChatRoom_notLastRound() {
             // given
             ChattingRoom room = createChattingRoom();
-            ChattingRoomMember host = createMember(room, USER_ID, MemberRole.HOST, Position.AGREE);
+            ChattingRoomMember participant = createMember(room, USER_ID, MemberRole.PARTICIPANT, Position.AGREE);
             RoomRound activeRound = RoomRound.builder().chattingRoom(room).roundNumber(2).build();
 
             given(chatRoomQueryService.findChattingRoomAndMember(ROOM_ID, USER_ID))
-                    .willReturn(new ChatRoomQueryService.ChattingRoomAndMember(room, host));
+                    .willReturn(new ChatRoomQueryService.ChattingRoomAndMember(room, participant));
             given(roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(ROOM_ID))
                     .willReturn(Optional.of(activeRound));
 
@@ -1053,22 +1186,6 @@ class ChatRoomServiceTest {
                     .isEqualTo(ErrorCode.CHAT_ROOM_NOT_LAST_ROUND);
         }
 
-        @Test
-        @DisplayName("HOST가 아니면 CHAT_ROOM_NOT_HOST 예외가 발생한다")
-        void endChatRoom_notHost() {
-            // given
-            ChattingRoom room = createChattingRoom();
-            ChattingRoomMember participant = createMember(room, USER_ID, MemberRole.PARTICIPANT, Position.AGREE);
-
-            given(chatRoomQueryService.findChattingRoomAndMember(ROOM_ID, USER_ID))
-                    .willReturn(new ChatRoomQueryService.ChattingRoomAndMember(room, participant));
-
-            // when & then
-            assertThatThrownBy(() -> chatRoomService.endChatRoom(ROOM_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(ErrorCode.CHAT_ROOM_NOT_HOST);
-        }
     }
 
     @Nested
