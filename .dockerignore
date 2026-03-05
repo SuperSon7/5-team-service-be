@@ -1,16 +1,4 @@
-.git
-.github
-.gitignore
-.idea
-.vscode
-.gradle
-build
-out
-docs
-*.md
-*.log
-.env
-.env.*
-.DS_Store
-Dockerfile
-docker-compose*.yml
+# 전부 제외 후 JAR만 허용 (Docker에 필요한 건 빌드된 JAR 뿐)
+*
+!api/build/libs/doktori-api.jar
+!chat/build/libs/doktori-chat.jar
