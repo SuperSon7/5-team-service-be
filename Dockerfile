@@ -24,10 +24,10 @@ FROM eclipse-temurin:21.0.5_11-jre-alpine AS api
 WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
 
-COPY --from=extract-api /workspace/extracted/dependencies/ ./
-COPY --from=extract-api /workspace/extracted/spring-boot-loader/ ./
-COPY --from=extract-api /workspace/extracted/snapshot-dependencies/ ./
-COPY --from=extract-api /workspace/extracted/application/ ./
+COPY --link --from=extract-api /workspace/extracted/dependencies/ ./
+COPY --link --from=extract-api /workspace/extracted/spring-boot-loader/ ./
+COPY --link --from=extract-api /workspace/extracted/snapshot-dependencies/ ./
+COPY --link --from=extract-api /workspace/extracted/application/ ./
 
 USER app
 EXPOSE 8080
@@ -41,10 +41,10 @@ FROM eclipse-temurin:21.0.5_11-jre-alpine AS chat
 WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
 
-COPY --from=extract-chat /workspace/extracted/dependencies/ ./
-COPY --from=extract-chat /workspace/extracted/spring-boot-loader/ ./
-COPY --from=extract-chat /workspace/extracted/snapshot-dependencies/ ./
-COPY --from=extract-chat /workspace/extracted/application/ ./
+COPY --link --from=extract-chat /workspace/extracted/dependencies/ ./
+COPY --link --from=extract-chat /workspace/extracted/spring-boot-loader/ ./
+COPY --link --from=extract-chat /workspace/extracted/snapshot-dependencies/ ./
+COPY --link --from=extract-chat /workspace/extracted/application/ ./
 
 USER app
 EXPOSE 8081
