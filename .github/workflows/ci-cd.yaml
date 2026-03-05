@@ -50,7 +50,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build (includes compile check)
-        run: ./gradlew build -x test --no-daemon --build-cache --parallel
+        run: ./gradlew build -x test --no-daemon --build-cache --parallel --configuration-cache
 
       - name: Notify Discord on failure
         if: failure()
@@ -103,7 +103,7 @@ jobs:
           cache: "gradle"
 
       - name: Build JARs
-        run: chmod +x ./gradlew && ./gradlew :api:bootJar :chat:bootJar --no-daemon --build-cache --parallel -x test
+        run: chmod +x ./gradlew && ./gradlew :api:bootJar :chat:bootJar --no-daemon --build-cache --parallel --configuration-cache -x test
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
