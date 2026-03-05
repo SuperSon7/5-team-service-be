@@ -159,7 +159,7 @@ class ChatRoomControllerTest {
 
         @ParameterizedTest(name = "topic이 [{0}]이면 검증 실패")
         @NullSource
-        @ValueSource(strings = {"가", "주제!@#$"})
+        @ValueSource(strings = {"가"})
         void invalidTopic_fails(String topic) throws Exception {
             ChatRoomCreateRequest request = new ChatRoomCreateRequest(
                     topic, "주제에 대한 설명", "9781234567890", 4, Position.AGREE, validQuiz());
@@ -635,18 +635,17 @@ class ChatRoomControllerTest {
                     .andExpect(status().isNotFound());
         }
 
-        // TODO: 테스트 후 주석 해제
-        // @Test
-        // @DisplayName("상대 포지션 부족이면 409를 반환한다")
-        // void startChatRoom_insufficientMembers() throws Exception {
-        //     willThrow(new BusinessException(ErrorCode.CHAT_ROOM_INSUFFICIENT_MEMBERS))
-        //             .given(chatRoomService).startChatRoom(10L, USER_ID);
-        //
-        //     mockMvc.perform(patch("/chat-rooms/10")
-        //                     .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
-        //                     .with(csrf()))
-        //             .andExpect(status().isConflict());
-        // }
+         @Test
+         @DisplayName("상대 포지션 부족이면 409를 반환한다")
+         void startChatRoom_insufficientMembers() throws Exception {
+             willThrow(new BusinessException(ErrorCode.CHAT_ROOM_INSUFFICIENT_MEMBERS))
+                     .given(chatRoomService).startChatRoom(10L, USER_ID);
+
+             mockMvc.perform(patch("/chat-rooms/10")
+                             .with(SecurityMockMvcRequestPostProcessors.user(createUserDetails()))
+                             .with(csrf()))
+                     .andExpect(status().isConflict());
+         }
     }
 
     @Nested

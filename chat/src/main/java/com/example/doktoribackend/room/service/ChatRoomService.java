@@ -5,6 +5,7 @@ import com.example.doktoribackend.book.service.BookService;
 import com.example.doktoribackend.book.repository.BookRepository;
 import com.example.doktoribackend.common.error.ErrorCode;
 import com.example.doktoribackend.config.WebSocketSessionRegistry;
+import com.example.doktoribackend.exception.AlreadyJoinedRoomException;
 import com.example.doktoribackend.exception.BusinessException;
 import com.example.doktoribackend.summary.service.RoundSummaryService;
 import com.example.doktoribackend.vote.service.VoteService;
@@ -28,6 +29,7 @@ import com.example.doktoribackend.room.repository.RoomRoundRepository;
 import com.example.doktoribackend.user.domain.UserInfo;
 import com.example.doktoribackend.user.repository.UserInfoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +39,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatRoomService {
@@ -120,6 +124,30 @@ public class ChatRoomService {
             throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_WAITING);
         }
 
+        Optional<ChattingRoomMember> existingMember =
+                chattingRoomMemberRepository.findByChattingRoomIdAndUserId(roomId, userId);
+
+        if (existingMember.isPresent()) {
+            ChattingRoomMember member = existingMember.get();
+
+            if (member.getStatus() == MemberStatus.WAITING) {
+                return chatRoomQueryService.buildWaitingRoomResponse(room);
+            }
+
+            if (member.getStatus() == MemberStatus.LEFT) {
+                quizService.validateQuizAnswer(roomId, request.quizAnswer());
+                validateRoomNotFull(room);
+                validatePositionNotFull(roomId, room.getCapacity(), request.position());
+                member.rejoin(request.position());
+                room.increaseMemberCount();
+                WaitingRoomResponse response = chatRoomQueryService.buildWaitingRoomResponse(room);
+                chatRoomEventPublisher.broadcastWaitingRoomUpdate(roomId, response);
+                return response;
+            }
+
+            throw new BusinessException(ErrorCode.CHAT_ROOM_ALREADY_JOINED);
+        }
+
         validateNotAlreadyJoined(userId);
         quizService.validateQuizAnswer(roomId, request.quizAnswer());
         validateRoomNotFull(room);
@@ -154,13 +182,12 @@ public class ChatRoomService {
             throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_HOST);
         }
 
-        // TODO: 테스트 후 주석 해제
-        // Position oppositePosition = requester.getPosition() == Position.AGREE ? Position.DISAGREE : Position.AGREE;
-        // int oppositeCount = chattingRoomMemberRepository
-        //         .countByChattingRoomIdAndPositionAndStatusIn(roomId, oppositePosition, ACTIVE_STATUSES);
-        // if (oppositeCount < 1) {
-        //     throw new BusinessException(ErrorCode.CHAT_ROOM_INSUFFICIENT_MEMBERS);
-        // }
+         Position oppositePosition = requester.getPosition() == Position.AGREE ? Position.DISAGREE : Position.AGREE;
+         int oppositeCount = chattingRoomMemberRepository
+                 .countByChattingRoomIdAndPositionAndStatusIn(roomId, oppositePosition, ACTIVE_STATUSES);
+         if (oppositeCount < 1) {
+             throw new BusinessException(ErrorCode.CHAT_ROOM_INSUFFICIENT_MEMBERS);
+         }
 
         room.startChatting();
 
@@ -195,11 +222,6 @@ public class ChatRoomService {
     public void nextRound(Long roomId, Long userId) {
         ChatRoomQueryService.ChattingRoomAndMember context = chatRoomQueryService.findChattingRoomAndMember(roomId, userId);
         ChattingRoom room = context.room();
-        ChattingRoomMember requester = context.member();
-
-        if (!requester.isHost()) {
-            throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_HOST);
-        }
 
         RoomRound currentRound = roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(roomId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_ROUND_NOT_FOUND));
@@ -230,11 +252,6 @@ public class ChatRoomService {
     @Transactional
     public void endChatRoom(Long roomId, Long userId) {
         ChatRoomQueryService.ChattingRoomAndMember context = chatRoomQueryService.findChattingRoomAndMember(roomId, userId);
-        ChattingRoomMember requester = context.member();
-
-        if (!requester.isHost()) {
-            throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_HOST);
-        }
 
         RoomRound currentRound = roomRoundRepository.findByChattingRoomIdAndEndedAtIsNull(roomId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_ROUND_NOT_FOUND));
@@ -246,11 +263,24 @@ public class ChatRoomService {
         endRoom(context.room(), currentRound);
     }
 
-    @Transactional
     public void endExpiredChatRooms() {
         List<ChattingRoom> expiredRooms = chattingRoomRepository.findExpiredChattingRooms(LocalDateTime.now());
+        TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
+
         for (ChattingRoom room : expiredRooms) {
-            endRoom(room, null);
+            Long roomId = room.getId();
+            try {
+                txTemplate.executeWithoutResult(status -> {
+                    ChattingRoom lockedRoom = chattingRoomRepository.findByIdWithLock(roomId)
+                            .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+                    if (lockedRoom.getStatus() != RoomStatus.CHATTING) {
+                        return;
+                    }
+                    endRoom(lockedRoom, null);
+                });
+            } catch (Exception e) {
+                log.warn("만료된 채팅방 종료 실패 roomId={}: {}", roomId, e.getMessage());
+            }
         }
     }
 
@@ -344,11 +374,9 @@ public class ChatRoomService {
     }
 
     private void validateNotAlreadyJoined(Long userId) {
-        boolean alreadyJoined = chattingRoomMemberRepository.existsByUserIdAndStatusIn(
-                userId, ACTIVE_STATUSES);
-
-        if (alreadyJoined) {
-            throw new BusinessException(ErrorCode.CHAT_ROOM_ALREADY_JOINED);
+        List<ChattingRoomMember> members = chattingRoomMemberRepository.findByUserIdAndStatusInWithLock(userId, ACTIVE_STATUSES);
+        if (!members.isEmpty()) {
+            throw new AlreadyJoinedRoomException(members.getFirst().getChattingRoom().getId());
         }
     }
 }
