@@ -156,7 +156,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.api-tags }}
           cache-from: type=registry,ref=${{ steps.meta.outputs.api-cache }}
-          cache-to: type=registry,ref=${{ steps.meta.outputs.api-cache }},mode=max
 
       - name: Build and push Chat image
         uses: docker/build-push-action@v6
@@ -167,7 +166,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.chat-tags }}
           cache-from: type=registry,ref=${{ steps.meta.outputs.chat-cache }}
-          cache-to: type=registry,ref=${{ steps.meta.outputs.chat-cache }},mode=max
 
   deploy-dev:
     needs: build-and-push
