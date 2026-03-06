@@ -34,6 +34,7 @@ jobs:
           echo "✅ Source branch validation passed: ${{ github.head_ref }}"
 
   ci:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -83,7 +84,6 @@ jobs:
                ${{ secrets.DISCORD_WEBHOOK_URL }} || true
 
   build-and-push:
-    needs: ci
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -137,14 +137,38 @@ jobs:
           distribution: "temurin"
           cache: "gradle"
 
-      - name: Build JARs
+      - name: Build (compile check + JARs)
+        run: chmod +x ./gradlew && ./gradlew build -x test --no-daemon --build-cache --parallel
+
+      - name: Notify Discord on CI failure
+        if: failure()
         run: |
-          chmod +x ./gradlew
-          TASKS=""
-          [ "${{ steps.changes.outputs.api }}" == "true" ] && TASKS="$TASKS :api:bootJar"
-          [ "${{ steps.changes.outputs.chat }}" == "true" ] && TASKS="$TASKS :chat:bootJar"
-          echo "Building: $TASKS"
-          ./gradlew $TASKS --no-daemon --build-cache --parallel -x test
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -1)
+          COMMIT_AUTHOR="${{ github.event.head_commit.author.name }}"
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          ACTIONS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{
+                 \"content\": \"❌ **Backend CI 빌드 실패**\",
+                 \"embeds\": [{
+                   \"title\": \"🔴 빌드 실패 알림\",
+                   \"color\": 15158528,
+                   \"fields\": [
+                     {\"name\": \"📦 저장소\", \"value\": \"\`${{ github.repository }}\`\", \"inline\": true},
+                     {\"name\": \"🌿 브랜치\", \"value\": \"\`${{ github.ref_name }}\`\", \"inline\": true},
+                     {\"name\": \"🔖 커밋\", \"value\": \"[\`$SHORT_SHA\`]($COMMIT_URL)\", \"inline\": true},
+                     {\"name\": \"💬 커밋 메시지\", \"value\": \"$COMMIT_MSG\", \"inline\": false},
+                     {\"name\": \"👤 작성자\", \"value\": \"$COMMIT_AUTHOR\", \"inline\": true},
+                     {\"name\": \"📋 상세 로그\", \"value\": \"[Actions에서 확인]($ACTIONS_URL)\", \"inline\": true}
+                   ],
+                   \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+                 }]
+               }" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }} || true
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -181,7 +205,7 @@ jobs:
 
   deploy-dev:
     needs: build-and-push
-    if: false  # Phase 6 Docker Bake 테스트 중 배포 스킵
+    if: false  # Phase 9 runner 통합 테스트 중 배포 스킵
     runs-on: ubuntu-latest
     permissions:
       id-token: write
