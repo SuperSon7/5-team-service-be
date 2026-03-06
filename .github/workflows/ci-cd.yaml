@@ -205,7 +205,7 @@ jobs:
 
   deploy-dev:
     needs: build-and-push
-    if: false  # Phase 9 runner 통합 테스트 중 배포 스킵
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
