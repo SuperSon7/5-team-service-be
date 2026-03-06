@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class DoktoriBackendApplication {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) { // Phase 8 selective build test
         SpringApplication.run(DoktoriBackendApplication.class, args);
     }
 
